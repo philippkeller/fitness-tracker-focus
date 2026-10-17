@@ -5,6 +5,7 @@ struct RoutinesView: View {
     @Environment(WorkoutEngine.self) private var engine
     @Binding var showWorkout: Bool
     @State private var path: [UUID] = []
+    @State private var confirmCancel = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -17,6 +18,7 @@ struct RoutinesView: View {
                             Label("Resume “\(active.name)”", systemImage: "play.circle.fill")
                                 .font(.headline)
                         }
+                        Button("Cancel workout", role: .destructive) { confirmCancel = true }
                     }
                 }
 
@@ -47,6 +49,12 @@ struct RoutinesView: View {
                 }
             }
             .navigationTitle("Train")
+            .confirmationDialog("Cancel this workout?", isPresented: $confirmCancel, titleVisibility: .visible) {
+                Button("Cancel workout", role: .destructive) { engine.discard() }
+                Button("Keep going", role: .cancel) {}
+            } message: {
+                Text("Stops the music and the voice. Nothing from this workout is saved.")
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { EditButton() }
                 ToolbarItem(placement: .primaryAction) {

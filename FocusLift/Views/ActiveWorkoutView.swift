@@ -39,7 +39,7 @@ struct ActiveWorkoutView: View {
                         }
 
                         Section {
-                            Button("Discard workout", role: .destructive) { confirmDiscard = true }
+                            Button("Cancel workout", role: .destructive) { confirmDiscard = true }
                         }
                     }
                     .navigationTitle(workout.wrappedValue.name)
@@ -67,6 +67,15 @@ struct ActiveWorkoutView: View {
                         Image(systemName: "chevron.down")
                     }
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(role: .destructive) {
+                        confirmDiscard = true
+                    } label: {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .tint(.red)
+                    .disabled(store.activeWorkout == nil)
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Finish") { confirmFinish = true }
                         .bold()
@@ -85,11 +94,14 @@ struct ActiveWorkoutView: View {
             } message: {
                 Text(finishMessage)
             }
-            .confirmationDialog("Discard this workout?", isPresented: $confirmDiscard, titleVisibility: .visible) {
-                Button("Discard", role: .destructive) {
+            .confirmationDialog("Cancel this workout?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+                Button("Cancel workout", role: .destructive) {
                     engine.discard()
                     dismiss()
                 }
+                Button("Keep going", role: .cancel) {}
+            } message: {
+                Text("Stops the music and the voice. Nothing from this workout is saved.")
             }
         }
     }
