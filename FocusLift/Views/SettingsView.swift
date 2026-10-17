@@ -153,7 +153,12 @@ struct SettingsView: View {
             let hasAccess = url.startAccessingSecurityScopedResource()
             defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
             do {
-                let text = (try? String(contentsOf: url, encoding: .utf8)) ?? (try String(contentsOf: url, encoding: .isoLatin1))
+                let text: String
+                if let utf8 = try? String(contentsOf: url, encoding: .utf8) {
+                    text = utf8
+                } else {
+                    text = try String(contentsOf: url, encoding: .isoLatin1)
+                }
                 let summary = try StrongImporter.importCSV(text, into: store, createRoutines: createRoutines)
                 var message = "Imported \(summary.workouts) workouts, \(summary.exercises) new exercises and \(summary.routines) routines."
                 if summary.duplicates > 0 { message += " Skipped \(summary.duplicates) already imported." }
