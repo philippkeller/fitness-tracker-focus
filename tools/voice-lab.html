@@ -37,10 +37,25 @@
   .take:first-child { border-top: 0; }
   .take .params { color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; }
   .take audio { width: 100%; margin-top: 6px; }
+  #pageError { display: none; position: sticky; top: 0; z-index: 10; background: #3a0d0b; color: #ff9f97;
+    border-bottom: 1px solid #ff453a; padding: 10px 16px; white-space: pre-wrap; font-size: 14px; }
+  #pageError button { float: right; margin-left: 12px; padding: 2px 10px; }
   pre { background: #000; border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow: auto; font-size: 12px; }
 </style>
+<script>
+  // Shows any error on the page, including ones that would otherwise only appear in the console.
+  function showPageError(message) {
+    const box = document.getElementById("pageError");
+    if (!box) { alert(message); return; }
+    box.style.display = "block";
+    box.querySelector("span").textContent = message;
+  }
+  window.addEventListener("error", e => showPageError("Error: " + (e.message || e.error)));
+  window.addEventListener("unhandledrejection", e => showPageError("Error: " + (e.reason?.message || e.reason)));
+</script>
 </head>
 <body>
+<div id="pageError"><button onclick="this.parentElement.style.display='none'">✕</button><span></span></div>
 <main>
   <h1>FocusLift Voice Lab</h1>
   <p class="hint">Try ElevenLabs voices, models and settings on FocusLift's real announcements. Your API key stays in this browser (localStorage) and goes only to api.elevenlabs.io.</p>
@@ -138,6 +153,18 @@
 const API = "https://api.elevenlabs.io";
 const $ = id => document.getElementById(id);
 
+const storage = (() => {
+  const memory = {};
+  try {
+    localStorage.setItem("lab.test", "1");
+    localStorage.removeItem("lab.test");
+    return localStorage;
+  } catch (e) {
+    setTimeout(() => showPageError("This browser blocks storage for local files, so the key won't be remembered after a reload. Everything else works."), 0);
+    return { getItem: k => memory[k] ?? null, setItem: (k, v) => { memory[k] = String(v); } };
+  }
+})();
+
 // Same wording as FocusLift/Audio/Phrases.swift (German).
 const SAMPLES = {
   "Start": "Training gestartet. Bulgarian Split Squat. Sitzen. Wo Fersen sind = vorderer Fuss. Satz 1 von 3. 15 Kilo, 10 Wiederholungen.",
@@ -179,11 +206,11 @@ function updateUI() {
   if (!isV3()) Object.assign(config, { similarityBoost: s.similarityBoost, style: s.style, speed: s.speed, useSpeakerBoost: s.useSpeakerBoost });
   if (s.languageCode) config.languageCode = s.languageCode;
   $("config").textContent = JSON.stringify(config, null, 2);
-  localStorage.setItem("lab.state", JSON.stringify(Object.fromEntries(FIELDS.map(f => [f, $(f).type === "checkbox" ? $(f).checked : $(f).value]))));
+  storage.setItem("lab.state", JSON.stringify(Object.fromEntries(FIELDS.map(f => [f, $(f).type === "checkbox" ? $(f).checked : $(f).value]))));
 }
 
 function headers() {
-  return { "xi-api-key": localStorage.getItem("lab.key") || "", "content-type": "application/json" };
+  return { "xi-api-key": storage.getItem("lab.key") || "", "content-type": "application/json" };
 }
 
 async function api(path, options = {}) {
@@ -197,7 +224,7 @@ async function api(path, options = {}) {
 }
 
 async function loadAccount() {
-  if (!localStorage.getItem("lab.key")) { $("accountError").textContent = "Paste your API key first."; return; }
+  if (!storage.getItem("lab.key")) { $("accountError").textContent = "Paste your API key first."; return; }
   $("accountError").textContent = "";
   $("quota").textContent = "Loading…";
   const problems = [];
@@ -352,14 +379,22 @@ for (const [name, text] of Object.entries(SAMPLES)) {
 }
 $("text").value = SAMPLES["New exercise"];
 try {
-  const state = JSON.parse(localStorage.getItem("lab.state") || "{}");
+  const state = JSON.parse(storage.getItem("lab.state") || "{}");
   for (const [field, value] of Object.entries(state)) {
+    if (!$(field)) continue;
     if ($(field).type === "checkbox") $(field).checked = value; else $(field).value = value;
   }
 } catch {}
-$("key").value = localStorage.getItem("lab.key") || "";
+$("key").value = storage.getItem("lab.key") || "";
 
-$("saveKey").onclick = () => { localStorage.setItem("lab.key", $("key").value.trim()); loadAccount(); };
+$("saveKey").onclick = () => {
+  const key = $("key").value.trim();
+  if (!key) { $("accountError").textContent = "Paste your API key first."; return; }
+  storage.setItem("lab.key", key);
+  $("accountError").textContent = "";
+  $("quota").textContent = "Key saved. Loading…";
+  loadAccount();
+};
 $("voice").onchange = () => { if ($("voice").value) $("voiceId").value = $("voice").value; updateUI(); };
 for (const id of FIELDS) $(id).addEventListener("input", updateUI);
 $("generate").onclick = generate;
@@ -368,7 +403,7 @@ $("copyConfig").onclick = () => navigator.clipboard.writeText($("config").textCo
 document.addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") generate(); });
 
 updateUI();
-if (localStorage.getItem("lab.key")) loadAccount();
+if (storage.getItem("lab.key")) loadAccount();
 </script>
 </body>
 </html>
