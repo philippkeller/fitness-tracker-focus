@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FocusLift Voice Lab</title>
+<style>
+  :root { color-scheme: dark; --bg: #111; --card: #1c1c1e; --line: #333; --accent: #34c759; --muted: #999; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: #eee; font: 15px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 12px; }
+  section { background: var(--card); border-radius: 12px; padding: 16px; margin: 16px 0; }
+  label { display: block; color: var(--muted); font-size: 13px; margin: 10px 0 4px; }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  input[type=text], input[type=password], select, textarea {
+    width: 100%; background: #000; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  textarea { min-height: 90px; resize: vertical; }
+  button { background: #2c2c2e; border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+  .row > * { flex: 1 1 200px; }
+  .slider { display: grid; grid-template-columns: 150px 1fr 48px; gap: 10px; align-items: center; margin: 6px 0; }
+  .slider span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .hint { color: var(--muted); font-size: 13px; }
+  .error { color: #ff453a; white-space: pre-wrap; }
+  .samples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .samples button { font-size: 13px; padding: 4px 10px; }
+  .voices { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; margin-top: 10px; }
+  .voice { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .voice:last-child { border-bottom: 0; }
+  .voice .name { flex: 1; }
+  .voice .meta { color: var(--muted); font-size: 12px; }
+  .take { border-top: 1px solid var(--line); padding: 10px 0; }
+  .take:first-child { border-top: 0; }
+  .take .params { color: var(--muted); font-size: 12px; font-family: ui-monospace, monospace; }
+  .take audio { width: 100%; margin-top: 6px; }
+  pre { background: #000; border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow: auto; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>FocusLift Voice Lab</h1>
+  <p class="hint">Try ElevenLabs voices, models and settings on FocusLift's real announcements. Your API key stays in this browser (localStorage) and goes only to api.elevenlabs.io.</p>
+
+  <section>
+    <h2>Account</h2>
+    <div class="row">
+      <div>
+        <label for="key">ElevenLabs API key</label>
+        <input id="key" type="password" placeholder="sk_…" autocomplete="off">
+      </div>
+      <div style="flex: 0 0 auto">
+        <button id="saveKey">Save &amp; load voices</button>
+      </div>
+    </div>
+    <p id="quota" class="hint"></p>
+  </section>
+
+  <section>
+    <h2>Voice &amp; model</h2>
+    <div class="row">
+      <div>
+        <label for="voice">Voice</label>
+        <select id="voice"></select>
+      </div>
+      <div>
+        <label for="voiceId">Voice ID</label>
+        <input id="voiceId" type="text" value="EXAVITQu4vr4xnSDxMaL">
+      </div>
+      <div>
+        <label for="model">Model</label>
+        <select id="model">
+          <option value="eleven_v3">eleven_v3 (most expressive, Kunigunde)</option>
+          <option value="eleven_multilingual_v2">eleven_multilingual_v2 (stable, natural)</option>
+          <option value="eleven_flash_v2_5">eleven_flash_v2_5 (fast, half price)</option>
+          <option value="eleven_turbo_v2_5">eleven_turbo_v2_5 (fast)</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint" id="modelHint"></p>
+
+    <div class="slider"><label for="stability">Stability</label><input id="stability" type="range" min="0" max="1" step="0.05" value="0.5"><span id="stabilityOut"></span></div>
+    <div class="slider"><label for="similarity">Similarity</label><input id="similarity" type="range" min="0" max="1" step="0.05" value="0.75"><span id="similarityOut"></span></div>
+    <div class="slider"><label for="style">Style exaggeration</label><input id="style" type="range" min="0" max="1" step="0.05" value="0"><span id="styleOut"></span></div>
+    <div class="slider"><label for="speed">Speed</label><input id="speed" type="range" min="0.7" max="1.2" step="0.05" value="1"><span id="speedOut"></span></div>
+    <div class="row" style="margin-top: 6px">
+      <label style="margin: 0"><input id="boost" type="checkbox" checked> Speaker boost</label>
+      <label style="margin: 0"><input id="forceLang" type="checkbox"> Force language code "de"</label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Text</h2>
+    <textarea id="text"></textarea>
+    <div class="samples" id="samples"></div>
+    <p class="hint">eleven_v3 also understands audio tags like <code>[cheerful]</code>, <code>[calm]</code> or <code>[whispers]</code> at the start of a sentence.</p>
+    <div class="row" style="margin-top: 10px">
+      <div style="flex: 0 0 auto"><button id="generate" class="primary">Generate &amp; play</button></div>
+      <div><span id="status" class="hint"></span></div>
+    </div>
+    <p id="error" class="error"></p>
+  </section>
+
+  <section>
+    <h2>Takes</h2>
+    <p class="hint" id="noTakes">Generated audio shows up here so you can compare.</p>
+    <div id="takes"></div>
+  </section>
+
+  <section>
+    <h2>Find German voices</h2>
+    <p class="hint">Search ElevenLabs' public voice library. Previews are free; "Use" adds the voice to your account so the API can use it.</p>
+    <div class="row">
+      <div><label for="search">Search (optional)</label><input id="search" type="text" placeholder="e.g. warm, coach, calm"></div>
+      <div>
+        <label for="gender">Gender</label>
+        <select id="gender"><option value="">Any</option><option value="female">Female</option><option value="male">Male</option></select>
+      </div>
+      <div style="flex: 0 0 auto"><button id="findVoices">Search</button></div>
+    </div>
+    <div class="voices" id="library" hidden></div>
+  </section>
+
+  <section>
+    <h2>Settings for FocusLift</h2>
+    <p class="hint">When you like a take, copy its settings. The app will take these values.</p>
+    <pre id="config"></pre>
+    <button id="copyConfig">Copy</button>
+  </section>
+</main>
+
+<script>
+const API = "https://api.elevenlabs.io";
+const $ = id => document.getElementById(id);
+
+// Same wording as FocusLift/Audio/Phrases.swift (German).
+const SAMPLES = {
+  "Start": "Training gestartet. Bulgarian Split Squat. Sitzen. Wo Fersen sind = vorderer Fuss. Satz 1 von 3. 15 Kilo, 10 Wiederholungen.",
+  "Rest + next": "Pause, 1 Minute 30 Sekunden. Danach: Satz 2 von 3. 17,5 Kilo, 10 Wiederholungen.",
+  "New exercise": "Pause, 2 Minuten. Danach: Seated Leg Curl (Machine). B3 L 1 lehne 6 nach unten. Langsam. Unten durchdrücken. Zehen nach hinten. Satz 1 von 2. 65 Kilo, 12 Wiederholungen.",
+  "10 seconds": "Noch 10 Sekunden.",
+  "Go": "Los! Satz 2 von 3. 17,5 Kilo, 10 Wiederholungen.",
+  "Done": "Alle Sätze geschafft. Stark! Beende das Training in der App.",
+};
+
+const FIELDS = ["voiceId", "model", "stability", "similarity", "style", "speed", "boost", "forceLang", "text"];
+
+function settings() {
+  return {
+    voiceId: $("voiceId").value.trim(),
+    voiceName: $("voice").selectedOptions[0]?.dataset.name || "",
+    modelId: $("model").value,
+    stability: +$("stability").value,
+    similarityBoost: +$("similarity").value,
+    style: +$("style").value,
+    speed: +$("speed").value,
+    useSpeakerBoost: $("boost").checked,
+    languageCode: $("forceLang").checked ? "de" : null,
+  };
+}
+
+function isV3() { return $("model").value === "eleven_v3"; }
+
+function updateUI() {
+  for (const id of ["stability", "similarity", "style", "speed"]) $(id + "Out").textContent = (+$(id).value).toFixed(2);
+  // eleven_v3 only knows three stability steps: creative, natural, robust.
+  $("stability").step = isV3() ? "0.5" : "0.05";
+  for (const id of ["similarity", "style", "speed", "boost"]) $(id).disabled = isV3();
+  $("modelHint").textContent = isV3()
+    ? "eleven_v3: only Stability applies (0 = creative, 0.5 = natural, 1 = robust). Steer tone with audio tags instead."
+    : "";
+  const s = settings();
+  const config = { voiceId: s.voiceId, voiceName: s.voiceName || undefined, modelId: s.modelId, stability: s.stability };
+  if (!isV3()) Object.assign(config, { similarityBoost: s.similarityBoost, style: s.style, speed: s.speed, useSpeakerBoost: s.useSpeakerBoost });
+  if (s.languageCode) config.languageCode = s.languageCode;
+  $("config").textContent = JSON.stringify(config, null, 2);
+  localStorage.setItem("lab.state", JSON.stringify(Object.fromEntries(FIELDS.map(f => [f, $(f).type === "checkbox" ? $(f).checked : $(f).value]))));
+}
+
+function headers() {
+  return { "xi-api-key": localStorage.getItem("lab.key") || "", "content-type": "application/json" };
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(API + path, { ...options, headers: headers() });
+  if (!response.ok) {
+    let message = await response.text();
+    try { const body = JSON.parse(message); message = body.detail?.message || body.detail?.status || JSON.stringify(body.detail || body); } catch {}
+    throw new Error(`${response.status}: ${message}`);
+  }
+  return response;
+}
+
+async function loadAccount() {
+  $("error").textContent = "";
+  try {
+    const sub = await (await api("/v1/user/subscription")).json();
+    $("quota").textContent = `Plan ${sub.tier}: ${sub.character_count.toLocaleString()} of ${sub.character_limit.toLocaleString()} credits used this period.`;
+  } catch (e) { $("quota").textContent = ""; $("error").textContent = "Account: " + e.message; }
+  try {
+    const { voices } = await (await api("/v1/voices")).json();
+    const current = $("voiceId").value;
+    $("voice").innerHTML = '<option value="">— pick from your voices —</option>' + voices
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(v => `<option value="${v.voice_id}" data-name="${escapeHTML(v.name)}">${escapeHTML(v.name)}${v.labels?.accent ? " · " + escapeHTML(v.labels.accent) : ""}</option>`)
+      .join("");
+    $("voice").value = voices.some(v => v.voice_id === current) ? current : "";
+    updateUI();
+  } catch (e) { $("error").textContent += "\nVoices: " + e.message; }
+}
+
+async function generate() {
+  const s = settings();
+  const text = $("text").value.trim();
+  if (!text || !s.voiceId) return;
+  $("generate").disabled = true;
+  $("error").textContent = "";
+  $("status").textContent = "Generating…";
+  const voiceSettings = { stability: s.stability };
+  if (!isV3()) Object.assign(voiceSettings, { similarity_boost: s.similarityBoost, style: s.style, speed: s.speed, use_speaker_boost: s.useSpeakerBoost });
+  const body = { text, model_id: s.modelId, voice_settings: voiceSettings };
+  if (s.languageCode) body.language_code = s.languageCode;
+  const started = performance.now();
+  try {
+    const response = await api(`/v1/text-to-speech/${encodeURIComponent(s.voiceId)}?output_format=mp3_44100_128`, {
+      method: "POST", body: JSON.stringify(body),
+    });
+    const blob = await response.blob();
+    const seconds = ((performance.now() - started) / 1000).toFixed(1);
+    $("status").textContent = `Took ${seconds} s, ${text.length} characters.`;
+    addTake(URL.createObjectURL(blob), s, text, seconds);
+    loadQuota();
+  } catch (e) {
+    $("status").textContent = "";
+    $("error").textContent = e.message;
+  } finally {
+    $("generate").disabled = false;
+  }
+}
+
+async function loadQuota() {
+  try {
+    const sub = await (await api("/v1/user/subscription")).json();
+    $("quota").textContent = `Plan ${sub.tier}: ${sub.character_count.toLocaleString()} of ${sub.character_limit.toLocaleString()} credits used this period.`;
+  } catch {}
+}
+
+function addTake(url, s, text, seconds) {
+  $("noTakes").hidden = true;
+  const take = document.createElement("div");
+  take.className = "take";
+  const params = [s.voiceName || s.voiceId, s.modelId, "stab " + s.stability];
+  if (s.modelId !== "eleven_v3") params.push("sim " + s.similarityBoost, "style " + s.style, "speed " + s.speed);
+  if (s.languageCode) params.push("lang " + s.languageCode);
+  take.innerHTML = `<div>${escapeHTML(text)}</div><div class="params">${escapeHTML(params.join(" · "))} · ${seconds} s</div>`;
+  const audio = document.createElement("audio");
+  audio.controls = true;
+  audio.src = url;
+  const restore = document.createElement("button");
+  restore.textContent = "Use these settings";
+  restore.style.marginTop = "6px";
+  restore.onclick = () => {
+    $("voiceId").value = s.voiceId; $("voice").value = s.voiceId; $("model").value = s.modelId;
+    $("stability").value = s.stability; $("similarity").value = s.similarityBoost; $("style").value = s.style;
+    $("speed").value = s.speed; $("boost").checked = s.useSpeakerBoost; $("forceLang").checked = !!s.languageCode;
+    updateUI();
+  };
+  take.append(audio, restore);
+  $("takes").prepend(take);
+  audio.play();
+}
+
+async function findVoices() {
+  $("error").textContent = "";
+  const params = new URLSearchParams({ language: "de", page_size: "40" });
+  if ($("search").value.trim()) params.set("search", $("search").value.trim());
+  if ($("gender").value) params.set("gender", $("gender").value);
+  try {
+    const { voices } = await (await api("/v1/shared-voices?" + params)).json();
+    const list = $("library");
+    list.hidden = false;
+    list.innerHTML = voices.length ? "" : '<div class="voice hint">No voices found.</div>';
+    for (const v of voices) {
+      const row = document.createElement("div");
+      row.className = "voice";
+      const meta = [v.gender, v.age, v.accent, v.use_case, v.descriptive].filter(Boolean).join(" · ");
+      row.innerHTML = `<div class="name">${escapeHTML(v.name)}<div class="meta">${escapeHTML(meta)}</div></div>`;
+      const preview = document.createElement("button");
+      preview.textContent = "▶ Preview";
+      preview.onclick = () => new Audio(v.preview_url).play();
+      const use = document.createElement("button");
+      use.textContent = "Use";
+      use.onclick = async () => {
+        use.disabled = true;
+        try {
+          await api(`/v1/voices/add/${v.public_owner_id}/${v.voice_id}`, { method: "POST", body: JSON.stringify({ new_name: v.name }) });
+        } catch (e) {
+          // Already in the library is fine; anything else is shown.
+          if (!/already/i.test(e.message)) { $("error").textContent = e.message; use.disabled = false; return; }
+        }
+        await loadAccount();
+        $("voiceId").value = v.voice_id;
+        $("voice").value = v.voice_id;
+        updateUI();
+        use.textContent = "Added ✓";
+      };
+      row.append(preview, use);
+      list.append(row);
+    }
+  } catch (e) { $("error").textContent = e.message; }
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+// Setup
+for (const [name, text] of Object.entries(SAMPLES)) {
+  const button = document.createElement("button");
+  button.textContent = name;
+  button.onclick = () => { $("text").value = text; updateUI(); };
+  $("samples").append(button);
+}
+$("text").value = SAMPLES["New exercise"];
+try {
+  const state = JSON.parse(localStorage.getItem("lab.state") || "{}");
+  for (const [field, value] of Object.entries(state)) {
+    if ($(field).type === "checkbox") $(field).checked = value; else $(field).value = value;
+  }
+} catch {}
+$("key").value = localStorage.getItem("lab.key") || "";
+
+$("saveKey").onclick = () => { localStorage.setItem("lab.key", $("key").value.trim()); loadAccount(); };
+$("voice").onchange = () => { if ($("voice").value) $("voiceId").value = $("voice").value; updateUI(); };
+for (const id of FIELDS) $(id).addEventListener("input", updateUI);
+$("generate").onclick = generate;
+$("findVoices").onclick = findVoices;
+$("copyConfig").onclick = () => navigator.clipboard.writeText($("config").textContent);
+document.addEventListener("keydown", e => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") generate(); });
+
+updateUI();
+if (localStorage.getItem("lab.key")) loadAccount();
+</script>
+</body>
+</html>
