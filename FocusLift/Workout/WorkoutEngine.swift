@@ -99,10 +99,14 @@ final class WorkoutEngine {
         audio.start()
         blocker.block()
         startTimer()
+        if let entries = store.activeWorkout?.entries {
+            let sentences = phrases.allSentences(for: entries, store: store)
+            Task { _ = await Self.prepareVoice(sentences) }
+        }
         if let position = currentPosition, let info = info(position) {
             phase = .lifting
             if announce {
-                say(phrases.started + " " + phrases.set(info, withName: true, withNote: true))
+                say([phrases.started] + phrases.set(info, withName: true, withNote: true))
             }
         } else {
             phase = .complete
@@ -146,10 +150,10 @@ final class WorkoutEngine {
             // Sets may have been added after everything was done.
             if let position = currentPosition, let info = info(position) {
                 phase = .lifting
-                say(phrases.go + " " + phrases.set(info, withName: true, withNote: true))
+                say([phrases.go] + phrases.set(info, withName: true, withNote: true))
                 updateNowPlaying()
             } else {
-                say(phrases.complete)
+                say([phrases.complete])
             }
         }
     }
@@ -164,7 +168,7 @@ final class WorkoutEngine {
 
         guard let next = currentPosition, let nextInfo = info(next) else {
             phase = .complete
-            say(phrases.complete)
+            say([phrases.complete])
             updateNowPlaying()
             return
         }
@@ -173,11 +177,11 @@ final class WorkoutEngine {
         let newExercise = next.entry != position.entry
         if rest <= 0 {
             phase = .lifting
-            say(phrases.go + " " + phrases.set(nextInfo, withName: newExercise, withNote: newExercise))
+            say([phrases.go] + phrases.set(nextInfo, withName: newExercise, withNote: newExercise))
         } else {
             phase = .resting(until: Date().addingTimeInterval(TimeInterval(rest)), total: rest)
             warnedTenSeconds = rest <= 20
-            say(phrases.rest(rest) + " " + phrases.upNext(phrases.set(nextInfo, withName: newExercise, withNote: newExercise)))
+            say([phrases.rest(rest), phrases.next] + phrases.set(nextInfo, withName: newExercise, withNote: newExercise))
         }
         updateNowPlaying()
     }
@@ -188,10 +192,10 @@ final class WorkoutEngine {
         lastCompleted = position
         if let next = currentPosition, let info = info(next) {
             phase = .lifting
-            say(phrases.skipped + " " + phrases.set(info, withName: true, withNote: true))
+            say([phrases.skipped] + phrases.set(info, withName: true, withNote: true))
         } else {
             phase = .complete
-            say(phrases.complete)
+            say([phrases.complete])
         }
         updateNowPlaying()
     }
@@ -201,17 +205,19 @@ final class WorkoutEngine {
         case .idle:
             return
         case .resting(let until, _):
-            var text = phrases.remaining(max(0, Int(until.timeIntervalSinceNow.rounded())))
+            // Rounded to 5 seconds so the voice can reuse cached audio.
+            let seconds = max(5, Int((until.timeIntervalSinceNow / 5).rounded()) * 5)
+            var parts = [phrases.remaining(seconds)]
             if let info = currentInfo {
-                text += " " + phrases.upNext(phrases.set(info, withName: true, withNote: true))
+                parts += [phrases.next] + phrases.set(info, withName: true, withNote: true)
             }
-            say(text)
+            say(parts)
         case .lifting:
             if let info = currentInfo {
                 say(phrases.set(info, withName: true, withNote: true))
             }
         case .complete:
-            say(phrases.complete)
+            say([phrases.complete])
         }
     }
 
@@ -223,13 +229,33 @@ final class WorkoutEngine {
         updateNowPlaying()
     }
 
-    func testVoice() {
+    /// Returns why the ElevenLabs voice wasn't used, or nil if it was.
+    func testVoice() async -> String? {
         if phase == .idle {
             try? AVAudioSession.sharedInstance().setCategory(.playback)
             try? AVAudioSession.sharedInstance().setActive(true)
         }
         let sample = SetInfo(exercise: "Bulgarian Split Squat", note: "", number: 2, count: 3, weight: 17.5, reps: 10)
-        say(phrases.rest(90) + " " + phrases.upNext(phrases.set(sample, withName: true, withNote: false)))
+        return await speaker.say(
+            [phrases.rest(90), phrases.next] + phrases.set(sample, withName: true, withNote: false),
+            language: Prefs.language)
+    }
+
+    /// Generates the ElevenLabs audio for these sentences ahead of time (e.g. on Wi-Fi before the gym).
+    /// Returns how many were generated and the first error.
+    static func prepareVoice(_ sentences: [String]) async -> (generated: Int, error: String?) {
+        guard VoiceConfig.isActive else { return (0, VoiceError.noKey.localizedDescription) }
+        let config = VoiceConfig.current
+        var generated = 0
+        for sentence in sentences where !VoiceCache.shared.isCached(sentence, config: config) {
+            do {
+                _ = try await VoiceCache.shared.audio(for: sentence, config: config)
+                generated += 1
+            } catch {
+                return (generated, error.localizedDescription)
+            }
+        }
+        return (generated, nil)
     }
 
     private func doublePress() {
@@ -245,10 +271,10 @@ final class WorkoutEngine {
         if let position = currentPosition, let info = info(position) {
             phase = .lifting
             let newExercise = lastCompleted?.entry != position.entry
-            say(phrases.go + " " + phrases.set(info, withName: newExercise, withNote: false))
+            say([phrases.go] + phrases.set(info, withName: newExercise, withNote: false))
         } else {
             phase = .complete
-            say(phrases.complete)
+            say([phrases.complete])
         }
         updateNowPlaying()
     }
@@ -270,7 +296,7 @@ final class WorkoutEngine {
             endRest()
         } else if remaining <= 10.5 && !warnedTenSeconds {
             warnedTenSeconds = true
-            say(phrases.tenSeconds)
+            say([phrases.tenSeconds])
         }
     }
 
@@ -286,8 +312,8 @@ final class WorkoutEngine {
             number: position.set + 1, count: entry.sets.count, weight: set.weight, reps: set.reps)
     }
 
-    private func say(_ text: String) {
-        speaker.speak(text, language: Prefs.language)
+    private func say(_ parts: [String]) {
+        speaker.speak(parts, language: Prefs.language)
     }
 
     /// Lock screen shows the workout state; the current song goes in the album line.

@@ -5,14 +5,34 @@ struct SubsonicSong: Decodable, Identifiable, Hashable {
     let id: String
     let title: String
     let artist: String?
+    let album: String?
+    /// Seconds.
+    let duration: Int?
 
-    private enum CodingKeys: String, CodingKey { case id, title, artist }
+    private enum CodingKeys: String, CodingKey { case id, title, artist, album, duration }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeFlexibleID(forKey: .id)
         title = (try? container.decode(String.self, forKey: .title)) ?? "Unknown"
         artist = try? container.decode(String.self, forKey: .artist)
+        album = try? container.decode(String.self, forKey: .album)
+        duration = try? container.decode(Int.self, forKey: .duration)
+    }
+}
+
+struct SubsonicArtist: Decodable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let albumCount: Int?
+
+    private enum CodingKeys: String, CodingKey { case id, name, albumCount }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeFlexibleID(forKey: .id)
+        name = (try? container.decode(String.self, forKey: .name)) ?? "Unknown"
+        albumCount = try? container.decode(Int.self, forKey: .albumCount)
     }
 }
 
@@ -61,6 +81,22 @@ struct SubsonicClient {
     func songs(inPlaylist id: String) async throws -> [SubsonicSong] {
         let body: PlaylistBody = try await fetch("getPlaylist", ["id": id])
         return body.playlist.entry ?? []
+    }
+
+    func artists() async throws -> [SubsonicArtist] {
+        let body: ArtistsBody = try await fetch("getArtists")
+        return (body.artists?.index ?? []).flatMap { $0.artist ?? [] }
+    }
+
+    /// All songs of an artist, album by album.
+    func songs(byArtist id: String) async throws -> [SubsonicSong] {
+        let body: ArtistBody = try await fetch("getArtist", ["id": id])
+        var songs: [SubsonicSong] = []
+        for album in body.artist.album ?? [] {
+            let albumBody: AlbumBody = try await fetch("getAlbum", ["id": album.id])
+            songs += albumBody.album.song ?? []
+        }
+        return songs
     }
 
     func randomSongs(count: Int) async throws -> [SubsonicSong] {
@@ -134,6 +170,29 @@ private struct PlaylistBody: Decodable {
 private struct RandomBody: Decodable {
     struct Songs: Decodable { let song: [SubsonicSong]? }
     let randomSongs: Songs?
+}
+
+private struct ArtistsBody: Decodable {
+    struct Index: Decodable { let artist: [SubsonicArtist]? }
+    struct Artists: Decodable { let index: [Index]? }
+    let artists: Artists?
+}
+
+private struct ArtistBody: Decodable {
+    struct Album: Decodable {
+        let id: String
+        private enum CodingKeys: String, CodingKey { case id }
+        init(from decoder: Decoder) throws {
+            id = try decoder.container(keyedBy: CodingKeys.self).decodeFlexibleID(forKey: .id)
+        }
+    }
+    struct Artist: Decodable { let album: [Album]? }
+    let artist: Artist
+}
+
+private struct AlbumBody: Decodable {
+    struct Album: Decodable { let song: [SubsonicSong]? }
+    let album: Album
 }
 
 private extension KeyedDecodingContainer {

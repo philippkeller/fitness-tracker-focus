@@ -4,10 +4,8 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Environment(AppStore.self) private var store
-    @Environment(WorkoutEngine.self) private var engine
     @Environment(AppBlocker.self) private var blocker
 
-    @AppStorage(Prefs.languageKey) private var language = "de"
     @AppStorage(Prefs.doublePressKey) private var doublePress = "song"
     @AppStorage(Prefs.serverKey) private var server = Prefs.defaultServer
     @AppStorage(Prefs.userKey) private var user = ""
@@ -23,17 +21,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Picker("Language", selection: $language) {
-                        Text("Deutsch").tag("de")
-                        Text("English").tag("en")
-                    }
-                    Button("Test voice") { engine.testVoice() }
-                } header: {
-                    Text("Voice")
-                } footer: {
-                    Text("For a nicer voice, download an “Enhanced” or “Premium” voice in iOS Settings → Accessibility → Spoken Content → Voices.")
-                }
+                VoiceSettingsSection()
 
                 Section {
                     Picker("Double press", selection: $doublePress) {
@@ -104,7 +92,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Data")
                 } footer: {
-                    Text("In Strong: Profile → Settings → Export Strong Data, save the file, then import it here. Workouts that were already imported are skipped.")
+                    Text("In Strong: Settings → Export Strong Data, save the file, then import it here. Workouts that were already imported are skipped.")
                 }
 
                 Section {

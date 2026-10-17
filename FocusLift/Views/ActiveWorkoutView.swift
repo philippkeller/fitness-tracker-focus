@@ -293,6 +293,16 @@ private struct MusicPickerView: View {
         NavigationStack {
             List {
                 Section {
+                    NavigationLink {
+                        ArtistListView { songs, start in
+                            music.play(songs: songs, startAt: start)
+                            dismiss()
+                        }
+                    } label: {
+                        Label("Artists", systemImage: "music.mic")
+                    }
+                }
+                Section {
                     Toggle("Shuffle", isOn: $shuffle)
                     Button {
                         play(nil)
@@ -345,5 +355,100 @@ private struct MusicPickerView: View {
         let shuffle = shuffle
         Task { await music.play(playlistID: playlistID, shuffle: shuffle) }
         dismiss()
+    }
+}
+
+private struct ArtistListView: View {
+    let onPlay: ([SubsonicSong], Int) -> Void
+
+    @Environment(MusicPlayer.self) private var music
+    @State private var search = ""
+    @State private var loading = true
+
+    var body: some View {
+        List {
+            if loading && music.artists.isEmpty {
+                ProgressView()
+            }
+            if let error = music.errorMessage {
+                Text(error).foregroundStyle(.red)
+            }
+            ForEach(filtered) { artist in
+                NavigationLink {
+                    ArtistSongsView(artist: artist, onPlay: onPlay)
+                } label: {
+                    Text(artist.name)
+                }
+            }
+        }
+        .navigationTitle("Artists")
+        .searchable(text: $search)
+        .task {
+            await music.loadArtists()
+            loading = false
+        }
+    }
+
+    private var filtered: [SubsonicArtist] {
+        let query = search.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return music.artists }
+        return music.artists.filter { $0.name.localizedCaseInsensitiveContains(query) }
+    }
+}
+
+private struct ArtistSongsView: View {
+    let artist: SubsonicArtist
+    let onPlay: ([SubsonicSong], Int) -> Void
+
+    @State private var songs: [SubsonicSong] = []
+    @State private var loading = true
+    @State private var error: String?
+
+    var body: some View {
+        List {
+            if loading {
+                ProgressView()
+            } else if songs.isEmpty && error == nil {
+                Text("No songs found.").foregroundStyle(.secondary)
+            }
+            if let error {
+                Text(error).foregroundStyle(.red)
+            }
+            ForEach(Array(songs.enumerated()), id: \.offset) { index, song in
+                Button {
+                    onPlay(songs, index)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(song.title).foregroundStyle(.primary)
+                            if let album = song.album, album != song.title {
+                                Text(album).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        if let duration = song.duration {
+                            Text(Fmt.clock(TimeInterval(duration)))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle(artist.name)
+        .task {
+            guard let client = Prefs.subsonicClient else {
+                error = "Set up your music server in Settings."
+                loading = false
+                return
+            }
+            do {
+                songs = try await client.songs(byArtist: artist.id)
+            } catch {
+                self.error = error.localizedDescription
+            }
+            loading = false
+        }
     }
 }

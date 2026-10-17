@@ -31,6 +31,8 @@ iOS sends AirPods presses only to the app that is currently playing audio. If Am
 - "Finish & update routine" saves today's weights, reps and exercise order to the routine.
 - Strong import: Strong → Settings → Export Strong Data. Then in FocusLift: Settings → Import Strong CSV. This imports history (used for Previous and records) and creates one routine per Strong workout name.
 - **App blocking**: Settings → Focus → choose apps (X, Instagram, …). While a workout runs they show a Screen Time block screen; they unlock when you finish or discard. Uses Apple's Family Controls (Screen Time) API, approved once with Face ID.
+- **ElevenLabs voice**: Settings → Voice. Paste your API key and optionally the settings from the Voice Lab (below). Each sentence ("Satz 2 von 3.", "17,5 Kilo, 10 Wiederholungen.") is generated once and saved on the phone, so repeated announcements cost no credits and work without signal. Tap *Prepare voice for routines* on Wi-Fi after changing a routine. If a sentence can't be generated, the iPhone voice reads the announcement.
+- **Music**: Artists → song, a random mix, or a playlist from your Navidrome server.
 - Data is stored in a single JSON file (Files app → On My iPhone → FocusLift). You can also export it from Settings.
 
 ## Build (Xcode 16 or newer)
@@ -40,13 +42,18 @@ iOS sends AirPods presses only to the app that is currently playing audio. If Am
 3. Plug in your iPhone, select it as the run destination and press **Run** (⌘R).
 4. On first install, trust the developer certificate on the iPhone (Settings → General → VPN & Device Management) and enable Developer Mode if asked.
 
-Recommended: download an *Enhanced* or *Premium* German voice in iOS Settings → Accessibility → Spoken Content → Voices. It sounds much better than the default voice.
+## Voice Lab
+
+`tools/voice-lab.html` is a page for trying ElevenLabs voices, models and settings on FocusLift's real announcements without rebuilding the app. Open it in a browser, paste your API key, generate, compare. *Copy* under "Settings for FocusLift", then in the app: Settings → Voice → *Paste settings from Voice Lab*.
+
+Without ElevenLabs: download an *Enhanced* or *Premium* German voice in iOS Settings → Accessibility → Spoken Content → Voices. It sounds much better than the default voice.
 
 ## Code map
 
 - `Workout/WorkoutEngine.swift`: state machine (lifting → resting → …), timer, announcements
 - `Audio/AudioController.swift`: audio session, silent loop, AirPods remote commands, lock screen info
 - `Audio/Phrases.swift`: everything the voice says (DE/EN)
+- `Audio/ElevenLabs.swift`: voice settings, API key in the Keychain, per-sentence audio cache
 - `Music/`: Subsonic client and in-app music player
 - `Store/AppStore.swift`: data, persistence, "previous" lookups, records
 - `Import/StrongImporter.swift`: Strong CSV import

@@ -6,6 +6,7 @@ import Observation
 @Observable
 final class MusicPlayer {
     var playlists: [SubsonicPlaylist] = []
+    var artists: [SubsonicArtist] = []
     var queue: [SubsonicSong] = []
     var index = 0
     var isPlaying = false
@@ -45,6 +46,31 @@ final class MusicPlayer {
         } catch {
             await MainActor.run { self.errorMessage = error.localizedDescription }
         }
+    }
+
+    func loadArtists() async {
+        guard let client = Prefs.subsonicClient else {
+            await MainActor.run { self.errorMessage = "Set up your music server in Settings." }
+            return
+        }
+        do {
+            let list = try await client.artists()
+            await MainActor.run {
+                self.artists = list.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+                self.errorMessage = nil
+            }
+        } catch {
+            await MainActor.run { self.errorMessage = error.localizedDescription }
+        }
+    }
+
+    /// Plays `songs` starting at `start`, then continues with the following ones.
+    func play(songs: [SubsonicSong], startAt start: Int) {
+        guard songs.indices.contains(start) else { return }
+        queue = songs
+        index = start
+        errorMessage = nil
+        playCurrent()
     }
 
     /// Plays a playlist, or a random mix when `playlistID` is nil.
