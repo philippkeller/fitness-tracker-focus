@@ -5,7 +5,7 @@ A gym tracker you run with the **phone locked in your pocket**. It talks to you 
 ## Workout flow
 
 1. Start a routine. The voice says the first exercise, its setup note, the set, the kg and the reps.
-2. Do the set and **press once**. The set is logged and the rest timer starts. The voice says the rest time and what comes next (with the setup note when it's a new exercise).
+2. Do the set and **press once**. A short local click immediately confirms the press was received, even while the spoken response is loading. The set is logged and the rest timer starts. The voice says the rest time and what comes next (with the setup note when it's a new exercise).
 3. At 10 seconds left you hear "Noch 10 Sekunden", then "Los! Satz 2 von 3 …".
 4. Press once during a rest to skip it.
 5. At the end, open the app and tap **Finish**. You'll see your records (heaviest weight, most reps, best set kg × reps).
@@ -13,8 +13,10 @@ A gym tracker you run with the **phone locked in your pocket**. It talks to you 
 | AirPods press | Action |
 |---|---|
 | 1× | Set done / skip rest |
-| 2× | Next song (while music plays), otherwise skip exercise. Configurable |
-| 3× | Repeat the last announcement (time left + next set) |
+| 2× | Repeat the last spoken message |
+| 3× | Repeat the last spoken message |
+
+Repeating replays the same wording and selected Ramona cue, without changing songs or advancing the workout. After restoring a workout following an app restart, the first repeat reads the current workout state.
 
 The lock screen's Now Playing widget shows the current exercise, or the rest countdown as a progress bar.
 
@@ -25,9 +27,11 @@ iOS sends AirPods presses only to the app that is currently playing audio. If Am
 ## Features
 
 - Routines: add, rename, reorder and delete exercises. Each set has its own kg, reps and rest time.
+- Gym habit grid below your routines: 52 weeks, one Monday–Sunday column per week. Completed workout days light up green; swipe back through the year and tap a day to open its workouts. Includes imported history, excludes empty and unfinished workouts. Multiple workouts on a day count as one gym day.
 - A setup note per exercise (the yellow note in Strong), read aloud before the exercise.
 - A "Previous" column showing last time's sets.
-- Records at the end of each workout and in history.
+- Exercise menu (•••) → **History**: scroll through every previous session, newest first, with the date, workout name, and each completed set’s kg and reps. Available in routines and active workouts, including Strong imports.
+- Records at the end of each workout and in history: a trophy card per exercise showing each record, the gain over the previous best, and the set where it happened. **Share** turns the card into an image for X, Messages or Photos. The workout's set list marks record sets with a medal.
 - "Finish & update routine" saves today's weights, reps and exercise order to the routine.
 - Strong import: Strong → Settings → Export Strong Data. Then in FocusLift: Settings → Import Strong CSV. This imports history (used for Previous and records) and creates one routine per Strong workout name.
 - **App blocking**: Settings → Focus → choose apps (X, Instagram, …). While a workout runs they show a Screen Time block screen; they unlock when you finish or discard. Uses Apple's Family Controls (Screen Time) API, approved once with Face ID.
@@ -45,6 +49,12 @@ iOS sends AirPods presses only to the app that is currently playing audio. If Am
 ## Voice Lab
 
 `tools/voice-lab.html` is a page for trying ElevenLabs voices, models and settings on FocusLift's real announcements without rebuilding the app. Open it in a browser, paste your API key, generate, compare. *Copy* under "Settings for FocusLift", then in the app: Settings → Voice → *Paste settings from Voice Lab*.
+
+With German selected, workout numbers are spelled out before synthesis (for example, “vierundzwanzig Kilo, sechsundzwanzig Wiederholungen”). Exercise names use German/English language detection independently of the workout cues, including with the iPhone voice. Saved audio includes the pronunciation language; older recordings are bypassed automatically. After installing this update, use **Settings → Voice → Prepare voice for routines** on Wi-Fi before training offline. **Test voice** includes 24 Kilo, 26 Wiederholungen, and a random start cue.
+
+The former “Los!” cue randomly selects one of eleven custom phrases, using **Ramona – Calm and Soothing** (ElevenLabs voice `yUy9CCX9brt8aPVvIWy3`, v3, robust stability). The exact phrase list lives in `Phrases.startCues`, including the intentional dialect and playful spellings. Every variant is prepared and cached, so random selection works offline after preparation; repeats are possible. Other announcements retain the voice selected in Settings. When ElevenLabs is off or generation fails, the iPhone voice reads the same phrase instead. Ramona must be accessible to the ElevenLabs account used by the app.
+
+Run `./tools/test-voice.sh` on a Mac with Xcode Command Line Tools to check number wording, exercise languages, prepared/live phrase parity, API language settings, and cache separation. Then listen to **Test voice** on an iPhone with ElevenLabs enabled and disabled.
 
 Without ElevenLabs: download an *Enhanced* or *Premium* German voice in iOS Settings → Accessibility → Spoken Content → Voices. It sounds much better than the default voice.
 

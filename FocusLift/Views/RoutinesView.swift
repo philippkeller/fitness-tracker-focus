@@ -47,6 +47,10 @@ struct RoutinesView: View {
                     }
                     .disabled(store.activeWorkout != nil)
                 }
+
+                Section("Gym habit") {
+                    GymAttendanceView()
+                }
             }
             .navigationTitle("Train")
             .confirmationDialog("Cancel this workout?", isPresented: $confirmCancel, titleVisibility: .visible) {
