@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum EditorMode {
     case routine
@@ -184,6 +185,7 @@ private struct SetRow: View {
                 // Always reserve this space so focusing or editing never shifts the field.
                 VStack(spacing: 0) {
                     Button {
+                        dismissRepsKeyboard()
                         if set.reps < Int.max { set.reps += 1 }
                     } label: {
                         Image(systemName: "plus")
@@ -193,6 +195,7 @@ private struct SetRow: View {
                     .disabled(set.reps == Int.max)
                     .accessibilityLabel("Increase repetitions, set \(number)")
                     Button {
+                        dismissRepsKeyboard()
                         if set.reps > 0 { set.reps -= 1 }
                     } label: {
                         Image(systemName: "minus")
@@ -221,6 +224,11 @@ private struct SetRow: View {
             }
         }
         .listRowBackground(set.done ? Color.green.opacity(0.15) : (isCurrent ? Color.accentColor.opacity(0.18) : nil))
+    }
+
+    private func dismissRepsKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        repsFocused = false
     }
 }
 

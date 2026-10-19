@@ -65,7 +65,8 @@ extension Array {
 extension View {
     /// Number pads have no return key; this adds a "Done" button above the keyboard.
     func keyboardDoneButton() -> some View {
-        toolbar {
+        background(OutsideTapKeyboardDismissal())
+        .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") {
