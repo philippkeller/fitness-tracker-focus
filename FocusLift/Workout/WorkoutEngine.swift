@@ -9,7 +9,7 @@ struct SetPosition: Equatable {
 
 /// Runs the active workout: tracks the current set, the rest timer, AirPods presses and announcements.
 ///
-/// AirPods: 1× = set done / skip rest, 2× = next song (or skip exercise), 3× = repeat announcement.
+/// AirPods: 1× = set done / skip rest, 2× / 3× = repeat the last announcement.
 @Observable
 final class WorkoutEngine {
     enum Phase: Equatable {
@@ -30,6 +30,7 @@ final class WorkoutEngine {
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var warnedTenSeconds = false
     @ObservationIgnored private var lastCompleted: SetPosition?
+    @ObservationIgnored private var lastAnnouncement: [SpeechPart] = []
 
     init(store: AppStore, music: MusicPlayer, blocker: AppBlocker, audio: AudioController, speaker: Speaker) {
         self.store = store
@@ -39,7 +40,7 @@ final class WorkoutEngine {
         self.speaker = speaker
 
         audio.onPrimary = { [weak self] in self?.primaryAction() }
-        audio.onNext = { [weak self] in self?.doublePress() }
+        audio.onNext = { [weak self] in self?.repeatAnnouncement() }
         audio.onPrevious = { [weak self] in self?.repeatAnnouncement() }
         audio.onInterruptionEnded = { [weak music] in music?.resumeAfterInterruption() }
         music.onTrackChange = { [weak self] in self?.updateNowPlaying() }
@@ -92,6 +93,7 @@ final class WorkoutEngine {
     func start(routine: Routine?) {
         store.startWorkout(from: routine)
         lastCompleted = nil
+        lastAnnouncement = []
         begin(announce: true)
     }
 
@@ -129,6 +131,7 @@ final class WorkoutEngine {
         timer?.invalidate()
         timer = nil
         speaker.stop()
+        lastAnnouncement = []
         music.stop()
         audio.stop()
         blocker.unblock()
@@ -201,6 +204,14 @@ final class WorkoutEngine {
     }
 
     func repeatAnnouncement() {
+        guard phase != .idle else { return }
+        if !lastAnnouncement.isEmpty {
+            // Replay the exact message, including the chosen random cue and voice.
+            // Do not regenerate it from a changed timer or edited workout values.
+            speaker.speak(lastAnnouncement)
+            return
+        }
+        // A restored workout has no in-memory announcement yet. Read its current state.
         switch phase {
         case .idle:
             return
@@ -235,15 +246,14 @@ final class WorkoutEngine {
             try? AVAudioSession.sharedInstance().setCategory(.playback)
             try? AVAudioSession.sharedInstance().setActive(true)
         }
-        let sample = SetInfo(exercise: "Bulgarian Split Squat", note: "", number: 2, count: 3, weight: 17.5, reps: 10)
+        let sample = SetInfo(exercise: "Bulgarian Split Squat", note: "", number: 2, count: 3, weight: 24, reps: 26)
         return await speaker.say(
-            [phrases.rest(90), phrases.next] + phrases.set(sample, withName: true, withNote: false),
-            language: Prefs.language)
+            [phrases.rest(90), phrases.next, phrases.go] + phrases.set(sample, withName: true, withNote: false))
     }
 
     /// Generates the ElevenLabs audio for these sentences ahead of time (e.g. on Wi-Fi before the gym).
     /// Returns how many were generated and the first error.
-    static func prepareVoice(_ sentences: [String]) async -> (generated: Int, error: String?) {
+    static func prepareVoice(_ sentences: [SpeechPart]) async -> (generated: Int, error: String?) {
         guard VoiceConfig.isActive else { return (0, VoiceError.noKey.localizedDescription) }
         let config = VoiceConfig.current
         var generated = 0
@@ -256,14 +266,6 @@ final class WorkoutEngine {
             }
         }
         return (generated, nil)
-    }
-
-    private func doublePress() {
-        if Prefs.doublePressSkipsSong && music.isPlaying {
-            music.next()
-        } else {
-            skipExercise()
-        }
     }
 
     private func endRest() {
@@ -312,8 +314,9 @@ final class WorkoutEngine {
             number: position.set + 1, count: entry.sets.count, weight: set.weight, reps: set.reps)
     }
 
-    private func say(_ parts: [String]) {
-        speaker.speak(parts, language: Prefs.language)
+    private func say(_ parts: [SpeechPart]) {
+        lastAnnouncement = parts
+        speaker.speak(parts)
     }
 
     /// Lock screen shows the workout state; the current song goes in the album line.

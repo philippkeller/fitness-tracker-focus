@@ -6,7 +6,6 @@ struct SettingsView: View {
     @Environment(AppStore.self) private var store
     @Environment(AppBlocker.self) private var blocker
 
-    @AppStorage(Prefs.doublePressKey) private var doublePress = "song"
     @AppStorage(Prefs.serverKey) private var server = Prefs.defaultServer
     @AppStorage(Prefs.userKey) private var user = ""
     @AppStorage(Prefs.passwordKey) private var password = ""
@@ -24,14 +23,11 @@ struct SettingsView: View {
                 VoiceSettingsSection()
 
                 Section {
-                    Picker("Double press", selection: $doublePress) {
-                        Text("Next song").tag("song")
-                        Text("Skip exercise").tag("skip")
-                    }
+                    LabeledContent("Double press", value: "Repeat last message")
                 } header: {
                     Text("AirPods")
                 } footer: {
-                    Text("1× press: set done, or skip the rest.\n2× press: next song while music plays, otherwise skip the exercise.\n3× press: repeat the announcement.\nThis only works while a workout is running in this app. Music from other apps (Amperfy, Spotify) would take over the presses, so play your music here.")
+                    Text("1× press: set done, or skip the rest.\n2× or 3× press: repeat the last message.\nThis only works while a workout is running in this app. Music from other apps (Amperfy, Spotify) would take over the presses, so play your music here.")
                 }
 
                 Section {

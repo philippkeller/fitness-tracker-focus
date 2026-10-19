@@ -151,8 +151,7 @@ private struct StatusCard: View {
     }
 
     private var airPodsHint: String {
-        let double = Prefs.doublePressSkipsSong ? "next song / skip exercise" : "skip exercise"
-        return "AirPods: 1× done / skip rest · 2× \(double) · 3× repeat"
+        "AirPods: 1× done / skip rest · 2× / 3× repeat last message"
     }
 
     @ViewBuilder

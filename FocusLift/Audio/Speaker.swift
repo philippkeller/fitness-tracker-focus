@@ -19,14 +19,14 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
         synthesizer.usesApplicationAudioSession = true
     }
 
-    func speak(_ parts: [String], language: String) {
-        Task { await say(parts, language: language) }
+    func speak(_ parts: [SpeechPart]) {
+        Task { await say(parts) }
     }
 
     /// Speaks and returns why the ElevenLabs voice wasn't used, or nil if it was.
     @discardableResult
-    func say(_ parts: [String], language: String) async -> String? {
-        let parts = parts.filter { !$0.isEmpty }
+    func say(_ parts: [SpeechPart]) async -> String? {
+        let parts = parts.filter { !$0.text.isEmpty }
         let current = await MainActor.run { () -> Int in
             stop()
             generation += 1
@@ -55,7 +55,7 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
         }
         await MainActor.run {
             guard current == generation else { return }
-            speakWithSystemVoice(parts.joined(separator: " "), language: language)
+            speakWithSystemVoice(parts)
         }
         return fallbackReason
     }
@@ -106,11 +106,13 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
 
     // MARK: iOS voice
 
-    private func speakWithSystemVoice(_ text: String, language: String) {
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = voice(for: language)
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
-        synthesizer.speak(utterance)
+    private func speakWithSystemVoice(_ parts: [SpeechPart]) {
+        for part in parts {
+            let utterance = AVSpeechUtterance(string: part.text)
+            utterance.voice = voice(for: part.language)
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+            synthesizer.speak(utterance)
+        }
     }
 
     /// Best installed voice for the language.
@@ -131,10 +133,14 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        DispatchQueue.main.async { self.onSpeakingChanged?(false) }
+        DispatchQueue.main.async {
+            if !self.synthesizer.isSpeaking { self.onSpeakingChanged?(false) }
+        }
     }
 
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        DispatchQueue.main.async { self.onSpeakingChanged?(false) }
+        DispatchQueue.main.async {
+            if !self.synthesizer.isSpeaking { self.onSpeakingChanged?(false) }
+        }
     }
 }
