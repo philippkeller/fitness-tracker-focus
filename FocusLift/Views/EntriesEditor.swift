@@ -1,6 +1,11 @@
 import SwiftUI
 import UIKit
 
+/// Stable selection owned by the screen, not by a recycled exercise section.
+struct ExerciseHistoryDestination: Identifiable {
+    let id: UUID
+}
+
 enum EditorMode {
     case routine
     case workout
@@ -14,6 +19,7 @@ struct EntriesEditor: View {
     let mode: EditorMode
     /// "Previous" shows the last workout before this date.
     var previousBefore: Date = .distantFuture
+    let onHistory: (UUID) -> Void
 
     var body: some View {
         ForEach($entries) { $entry in
@@ -25,7 +31,8 @@ struct EntriesEditor: View {
                 onRemove: {
                     let id = entry.id
                     withAnimation { entries.removeAll { $0.id == id } }
-                })
+                },
+                onHistory: { onHistory(entry.exerciseID) })
         }
     }
 }
@@ -38,7 +45,7 @@ private struct EntrySection: View {
     let previous: [WorkSet]
     let currentSetID: UUID?
     let onRemove: () -> Void
-    @State private var showingHistory = false
+    let onHistory: () -> Void
 
     var body: some View {
         Section {
@@ -78,7 +85,7 @@ private struct EntrySection: View {
                 Spacer()
                 Menu {
                     Button {
-                        showingHistory = true
+                        onHistory()
                     } label: {
                         Label("History", systemImage: "clock.arrow.circlepath")
                     }
@@ -98,9 +105,6 @@ private struct EntrySection: View {
                 }
             }
             .textCase(nil)
-        }
-        .sheet(isPresented: $showingHistory) {
-            ExerciseHistoryView(exerciseID: entry.exerciseID)
         }
     }
 

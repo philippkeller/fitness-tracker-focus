@@ -8,6 +8,7 @@ struct ActiveWorkoutView: View {
 
     @State private var showPicker = false
     @State private var showReorder = false
+    @State private var historyDestination: ExerciseHistoryDestination?
     @State private var confirmFinish = false
     @State private var confirmDiscard = false
 
@@ -22,7 +23,9 @@ struct ActiveWorkoutView: View {
                             Section { MusicBar() }
                         }
 
-                        EntriesEditor(entries: workout.entries, mode: .workout, previousBefore: workout.wrappedValue.startedAt)
+                        EntriesEditor(entries: workout.entries, mode: .workout, previousBefore: workout.wrappedValue.startedAt) { exerciseID in
+                            historyDestination = ExerciseHistoryDestination(id: exerciseID)
+                        }
 
                         Section {
                             Button {
@@ -59,6 +62,9 @@ struct ActiveWorkoutView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .keyboardDoneButton()
+            .sheet(item: $historyDestination) { destination in
+                ExerciseHistoryView(exerciseID: destination.id)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
