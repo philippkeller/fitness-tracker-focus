@@ -37,6 +37,7 @@ private struct EntrySection: View {
     let previous: [WorkSet]
     let currentSetID: UUID?
     let onRemove: () -> Void
+    @State private var showingHistory = false
 
     var body: some View {
         Section {
@@ -75,6 +76,11 @@ private struct EntrySection: View {
                     .strikethrough(entry.skipped)
                 Spacer()
                 Menu {
+                    Button {
+                        showingHistory = true
+                    } label: {
+                        Label("History", systemImage: "clock.arrow.circlepath")
+                    }
                     Menu("Rest for all sets") {
                         ForEach(Fmt.restOptions, id: \.self) { seconds in
                             Button(Fmt.rest(seconds)) {
@@ -91,6 +97,9 @@ private struct EntrySection: View {
                 }
             }
             .textCase(nil)
+        }
+        .sheet(isPresented: $showingHistory) {
+            ExerciseHistoryView(exerciseID: entry.exerciseID)
         }
     }
 
@@ -125,7 +134,7 @@ private struct SetHeaderRow: View {
             Text("Set").frame(width: 28)
             Text("Previous").frame(maxWidth: .infinity)
             Text("kg").frame(width: 58)
-            Text("Reps").frame(width: 44)
+            Text("Reps").frame(width: 44).padding(.trailing, 28)
             Text("Rest").frame(width: 40)
             if showCheck {
                 Image(systemName: "checkmark").frame(width: 34)
@@ -158,17 +167,43 @@ private struct SetRow: View {
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity)
 
-            TextField("kg", value: $set.weight, format: .number)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.center)
+            WeightField(value: $set.weight)
+                .accessibilityLabel("Weight in kilograms, set \(number)")
                 .frame(width: 58, height: 30)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
 
-            TextField("reps", value: $set.reps, format: .number)
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.center)
-                .frame(width: 44, height: 30)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            HStack(spacing: 4) {
+                TextField("reps", value: $set.reps, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 44, height: 30)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+                    .accessibilityLabel("Repetitions, set \(number)")
+
+                // Always reserve this space so focusing or editing never shifts the field.
+                VStack(spacing: 0) {
+                    Button {
+                        if set.reps < Int.max { set.reps += 1 }
+                    } label: {
+                        Image(systemName: "plus")
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .disabled(set.reps == Int.max)
+                    .accessibilityLabel("Increase repetitions, set \(number)")
+                    Button {
+                        if set.reps > 0 { set.reps -= 1 }
+                    } label: {
+                        Image(systemName: "minus")
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .disabled(set.reps <= 0)
+                    .accessibilityLabel("Decrease repetitions, set \(number)")
+                }
+                .font(.caption.bold())
+                .buttonStyle(.borderless)
+            }
 
             Menu {
                 ForEach(Fmt.restOptions, id: \.self) { seconds in

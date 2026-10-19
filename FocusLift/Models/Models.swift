@@ -57,11 +57,20 @@ struct Bests {
     var weight = 0.0
     var reps = 0
     var volume = 0.0
+    /// The first set that reached each best, so a record can point at the set where it happened.
+    var weightSet: WorkSet?
+    var repsSet: WorkSet?
     var volumeSet: WorkSet?
 
     mutating func add(_ set: WorkSet) {
-        weight = max(weight, set.weight)
-        reps = max(reps, set.reps)
+        if set.weight > weight {
+            weight = set.weight
+            weightSet = set
+        }
+        if set.reps > reps {
+            reps = set.reps
+            repsSet = set
+        }
         let setVolume = set.weight * Double(set.reps)
         if setVolume > volume {
             volume = setVolume
@@ -80,12 +89,37 @@ enum RecordKind {
         case .volume: "Best set (kg × reps)"
         }
     }
+
+    /// Label next to the set that earned the record.
+    var badge: String {
+        switch self {
+        case .weight: "Heaviest"
+        case .reps: "Most reps"
+        case .volume: "Best set"
+        }
+    }
 }
 
 struct RecordHit: Identifiable {
     let id = UUID()
-    let exercise: String
     let kind: RecordKind
     let value: String
     let previous: String
+    /// Improvement over the previous best, e.g. "+2.5 kg".
+    let gain: String
+    /// The set in which the record happened.
+    let setID: UUID
+}
+
+/// All records one exercise set in a workout, with that exercise's completed sets for context.
+struct ExerciseRecord: Identifiable {
+    let exerciseID: UUID
+    let exercise: String
+    let sets: [WorkSet]
+    let hits: [RecordHit]
+    var id: UUID { exerciseID }
+
+    func hits(for set: WorkSet) -> [RecordHit] {
+        hits.filter { $0.setID == set.id }
+    }
 }

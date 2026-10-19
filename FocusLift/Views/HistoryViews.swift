@@ -45,32 +45,30 @@ struct WorkoutSummaryView: View {
 
     var body: some View {
         let records = store.records(in: workout)
+        let recordSetIDs = Set(records.flatMap(\.hits).map(\.setID))
         List {
+            if records.isEmpty {
+                Section("Records") {
+                    Text("No new records this time.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            ForEach(records) { record in
+                Section {
+                    VStack(spacing: 12) {
+                        RecordCard(record: record, workoutName: workout.name, date: workout.startedAt)
+                        RecordShareButton(record: record, workoutName: workout.name, date: workout.startedAt)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+            }
+
             Section {
                 LabeledContent("Date", value: workout.startedAt.formatted(date: .abbreviated, time: .shortened))
                 LabeledContent("Duration", value: Fmt.clock(workout.duration))
                 LabeledContent("Sets", value: "\(workout.doneSets.count)")
                 LabeledContent("Volume", value: Fmt.kg(workout.volume))
-            }
-
-            Section("Records") {
-                if records.isEmpty {
-                    Text("No new records this time.")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(records) { record in
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: "trophy.fill")
-                            .foregroundStyle(.yellow)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(record.exercise).font(.headline)
-                            Text("\(record.kind.title): \(record.value)")
-                            Text("Before: \(record.previous)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
             }
 
             ForEach(workout.entries) { entry in
@@ -81,6 +79,11 @@ struct WorkoutSummaryView: View {
                                 .foregroundStyle(.secondary)
                                 .frame(width: 24)
                             Text(Fmt.set(set))
+                            if recordSetIDs.contains(set.id) {
+                                Spacer()
+                                Image(systemName: "medal.fill")
+                                    .foregroundStyle(RecordCard.gold)
+                            }
                         }
                     }
                 }
@@ -91,6 +94,71 @@ struct WorkoutSummaryView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 if isSheet {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// All completed sessions for a single exercise, including imported workouts.
+struct ExerciseHistoryView: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let exerciseID: UUID
+
+    private struct Session: Identifiable {
+        let workout: Workout
+        let sets: [WorkSet]
+        var id: UUID { workout.id }
+    }
+
+    private var sessions: [Session] {
+        store.history.sorted { $0.startedAt > $1.startedAt }.compactMap { workout in
+            // An exercise can occur more than once in a workout; keep all its logged sets.
+            let sets = workout.entries
+                .filter { $0.exerciseID == exerciseID }
+                .flatMap(\.sets)
+                .filter(\.done)
+            return sets.isEmpty ? nil : Session(workout: workout, sets: sets)
+        }
+    }
+
+    var body: some View {
+        let sessions = sessions
+        NavigationStack {
+            List {
+                ForEach(sessions) { session in
+                    Section {
+                        ForEach(Array(session.sets.enumerated()), id: \.element.id) { index, set in
+                            LabeledContent("Set \(index + 1)") {
+                                Text("\(Fmt.kg(set.weight)) × \(set.reps) reps")
+                                    .monospacedDigit()
+                                    .foregroundStyle(.primary)
+                            }
+                        }
+                    } header: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(session.workout.startedAt.formatted(date: .abbreviated, time: .shortened))
+                                .font(.headline)
+                            Text(session.workout.name)
+                                .font(.caption)
+                        }
+                        .textCase(nil)
+                    }
+                }
+            }
+            .overlay {
+                if sessions.isEmpty {
+                    ContentUnavailableView(
+                        "No history yet", systemImage: "clock.arrow.circlepath",
+                        description: Text("Completed sets for this exercise will appear here after you finish a workout. Strong imports are included too."))
+                }
+            }
+            .navigationTitle(store.exerciseName(exerciseID))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
