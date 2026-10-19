@@ -8,7 +8,6 @@ struct ActiveWorkoutView: View {
 
     @State private var showPicker = false
     @State private var showReorder = false
-    @State private var historyDestination: ExerciseHistoryDestination?
     @State private var confirmFinish = false
     @State private var confirmDiscard = false
 
@@ -23,9 +22,7 @@ struct ActiveWorkoutView: View {
                             Section { MusicBar() }
                         }
 
-                        EntriesEditor(entries: workout.entries, mode: .workout, previousBefore: workout.wrappedValue.startedAt) { exerciseID in
-                            historyDestination = ExerciseHistoryDestination(id: exerciseID)
-                        }
+                        EntriesEditor(entries: workout.entries, mode: .workout, previousBefore: workout.wrappedValue.startedAt)
 
                         Section {
                             Button {
@@ -62,9 +59,6 @@ struct ActiveWorkoutView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .keyboardDoneButton()
-            .sheet(item: $historyDestination) { destination in
-                ExerciseHistoryView(exerciseID: destination.id)
-            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -157,7 +151,8 @@ private struct StatusCard: View {
     }
 
     private var airPodsHint: String {
-        "AirPods: 1× done / skip rest · 2× / 3× repeat last message"
+        let double = Prefs.doublePressSkipsSong ? "next song / skip exercise" : "skip exercise"
+        return "AirPods: 1× done / skip rest · 2× \(double) · 3× repeat"
     }
 
     @ViewBuilder

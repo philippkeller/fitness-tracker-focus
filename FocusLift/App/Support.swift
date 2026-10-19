@@ -4,6 +4,7 @@ import UIKit
 /// Settings shared between views (@AppStorage) and non-view code.
 enum Prefs {
     static let languageKey = "voiceLanguage"
+    static let doublePressKey = "doublePress"
     static let serverKey = "subsonicServer"
     static let userKey = "subsonicUser"
     static let passwordKey = "subsonicPassword"
@@ -13,6 +14,11 @@ enum Prefs {
     /// "de" or "en".
     static var language: String {
         UserDefaults.standard.string(forKey: languageKey) ?? "de"
+    }
+
+    /// When true, a double press skips to the next song while music plays.
+    static var doublePressSkipsSong: Bool {
+        (UserDefaults.standard.string(forKey: doublePressKey) ?? "song") == "song"
     }
 
     static var subsonicClient: SubsonicClient? {
@@ -65,8 +71,7 @@ extension Array {
 extension View {
     /// Number pads have no return key; this adds a "Done" button above the keyboard.
     func keyboardDoneButton() -> some View {
-        background(OutsideTapKeyboardDismissal())
-        .toolbar {
+        toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") {

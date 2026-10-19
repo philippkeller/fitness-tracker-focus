@@ -13,7 +13,6 @@ final class AudioController {
     var onInterruptionEnded: (() -> Void)?
 
     private var silence: AVAudioPlayer?
-    private var pressConfirmation: AVAudioPlayer?
     private var isActive = false
     private var lastPrimary = Date.distantPast
     private var interruptionObserver: NSObjectProtocol?
@@ -36,14 +35,6 @@ final class AudioController {
         }
         if silence == nil { silence = Self.makeSilencePlayer() }
         silence?.play()
-        // Load and prepare before any presses, never while a response is being requested.
-        if pressConfirmation == nil,
-           let url = Bundle.main.url(forResource: "press-confirmation", withExtension: "wav") {
-            pressConfirmation = try? AVAudioPlayer(contentsOf: url)
-            pressConfirmation?.volume = 0.5
-        }
-        pressConfirmation?.prepareToPlay()
-        lastPrimary = .distantPast
         installCommands()
         isActive = true
     }
@@ -51,7 +42,6 @@ final class AudioController {
     func stop() {
         isActive = false
         silence?.stop()
-        pressConfirmation?.stop()
         removeCommands()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -113,14 +103,9 @@ final class AudioController {
 
     private func primaryPressed() {
         // Guard against iOS delivering one press as two commands.
-        guard isActive, let onPrimary,
-              Date().timeIntervalSince(lastPrimary) > 0.6 else { return }
+        guard Date().timeIntervalSince(lastPrimary) > 0.6 else { return }
         lastPrimary = Date()
-        // Acknowledge acceptance immediately, before workout changes, cache reads or API calls.
-        // This uses the existing audio session, so the click follows the AirPods output route.
-        pressConfirmation?.currentTime = 0
-        pressConfirmation?.play()
-        onPrimary()
+        onPrimary?()
     }
 
     // MARK: Interruptions (calls, Siri, alarms)

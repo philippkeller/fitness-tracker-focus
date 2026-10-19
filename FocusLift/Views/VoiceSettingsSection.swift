@@ -12,7 +12,7 @@ struct VoiceSettingsSection: View {
     @State private var config = VoiceConfig.current
     @State private var status: String?
     @State private var busy = false
-    @State private var pending: [SpeechPart] = []
+    @State private var pending: [String] = []
     @State private var cache = (files: 0, bytes: 0)
 
     var body: some View {
@@ -83,13 +83,13 @@ struct VoiceSettingsSection: View {
     }
 
     private var credits: Int {
-        pending.reduce(0) { $0 + $1.text.count }
+        pending.reduce(0) { $0 + $1.count }
     }
 
     /// Sentences of all routines that have no saved audio yet.
     private func refresh() {
         let phrases = Phrases(language: language)
-        var seen = Set<SpeechPart>()
+        var seen = Set<String>()
         let all = store.routines
             .flatMap { phrases.allSentences(for: $0.entries, store: store) }
             .filter { seen.insert($0).inserted }

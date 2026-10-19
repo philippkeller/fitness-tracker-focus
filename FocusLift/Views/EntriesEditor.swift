@@ -1,10 +1,4 @@
 import SwiftUI
-import UIKit
-
-/// Stable selection owned by the screen, not by a recycled exercise section.
-struct ExerciseHistoryDestination: Identifiable {
-    let id: UUID
-}
 
 enum EditorMode {
     case routine
@@ -19,7 +13,6 @@ struct EntriesEditor: View {
     let mode: EditorMode
     /// "Previous" shows the last workout before this date.
     var previousBefore: Date = .distantFuture
-    let onHistory: (UUID) -> Void
 
     var body: some View {
         ForEach($entries) { $entry in
@@ -31,8 +24,7 @@ struct EntriesEditor: View {
                 onRemove: {
                     let id = entry.id
                     withAnimation { entries.removeAll { $0.id == id } }
-                },
-                onHistory: { onHistory(entry.exerciseID) })
+                })
         }
     }
 }
@@ -45,7 +37,6 @@ private struct EntrySection: View {
     let previous: [WorkSet]
     let currentSetID: UUID?
     let onRemove: () -> Void
-    let onHistory: () -> Void
 
     var body: some View {
         Section {
@@ -84,11 +75,6 @@ private struct EntrySection: View {
                     .strikethrough(entry.skipped)
                 Spacer()
                 Menu {
-                    Button {
-                        onHistory()
-                    } label: {
-                        Label("History", systemImage: "clock.arrow.circlepath")
-                    }
                     Menu("Rest for all sets") {
                         ForEach(Fmt.restOptions, id: \.self) { seconds in
                             Button(Fmt.rest(seconds)) {
@@ -139,7 +125,8 @@ private struct SetHeaderRow: View {
             Text("Set").frame(width: 28)
             Text("Previous").frame(maxWidth: .infinity)
             Text("kg").frame(width: 58)
-            Text("Reps").frame(width: 44).padding(.trailing, 28)
+            Text("Reps").frame(width: 44)
+            Text("Rest").frame(width: 40)
             if showCheck {
                 Image(systemName: "checkmark").frame(width: 34)
             }
@@ -156,7 +143,6 @@ private struct SetRow: View {
     let mode: EditorMode
     let isCurrent: Bool
     let onCheck: () -> Void
-    @FocusState private var repsFocused: Bool
 
     var body: some View {
         HStack(spacing: 6) {
@@ -172,48 +158,26 @@ private struct SetRow: View {
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity)
 
-            WeightField(value: $set.weight)
-                .accessibilityLabel("Weight in kilograms, set \(number)")
+            TextField("kg", value: $set.weight, format: .number)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.center)
                 .frame(width: 58, height: 30)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
 
-            HStack(spacing: 4) {
-                TextField("reps", value: $set.reps, format: .number)
-                    .focused($repsFocused)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.center)
-                    .frame(width: 44, height: 30)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
-                    .accessibilityLabel("Repetitions, set \(number)")
+            TextField("reps", value: $set.reps, format: .number)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.center)
+                .frame(width: 44, height: 30)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
 
-                // Always reserve this space so focusing or editing never shifts the field.
-                VStack(spacing: 0) {
-                    Button {
-                        dismissRepsKeyboard()
-                        if set.reps < Int.max { set.reps += 1 }
-                    } label: {
-                        Image(systemName: "plus")
-                            .frame(width: 24, height: 24)
-                            .contentShape(Rectangle())
-                    }
-                    .disabled(set.reps == Int.max)
-                    .accessibilityLabel("Increase repetitions, set \(number)")
-                    Button {
-                        dismissRepsKeyboard()
-                        if set.reps > 0 { set.reps -= 1 }
-                    } label: {
-                        Image(systemName: "minus")
-                            .frame(width: 24, height: 24)
-                            .contentShape(Rectangle())
-                    }
-                    .disabled(set.reps <= 0)
-                    .accessibilityLabel("Decrease repetitions, set \(number)")
+            Menu {
+                ForEach(Fmt.restOptions, id: \.self) { seconds in
+                    Button(Fmt.rest(seconds)) { set.rest = seconds }
                 }
-                .font(.caption.bold())
-                .buttonStyle(.borderless)
-                .opacity(repsFocused ? 1 : 0)
-                .allowsHitTesting(repsFocused)
-                .accessibilityHidden(!repsFocused)
+            } label: {
+                Text(Fmt.rest(set.rest))
+                    .font(.caption.monospacedDigit())
+                    .frame(width: 40, height: 30)
             }
 
             if mode == .workout {
@@ -228,11 +192,6 @@ private struct SetRow: View {
             }
         }
         .listRowBackground(set.done ? Color.green.opacity(0.15) : (isCurrent ? Color.accentColor.opacity(0.18) : nil))
-    }
-
-    private func dismissRepsKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        repsFocused = false
     }
 }
 

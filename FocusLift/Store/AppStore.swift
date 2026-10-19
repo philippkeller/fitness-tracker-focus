@@ -150,8 +150,8 @@ final class AppStore {
     }
 
     /// New records set in `workout` compared to everything before it. First-time exercises don't count.
-    func records(in workout: Workout) -> [ExerciseRecord] {
-        var records: [ExerciseRecord] = []
+    func records(in workout: Workout) -> [RecordHit] {
+        var hits: [RecordHit] = []
         var seen = Set<UUID>()
         for entry in workout.entries where seen.insert(entry.exerciseID).inserted {
             let sets = workout.entries
@@ -161,29 +161,21 @@ final class AppStore {
             guard !sets.isEmpty, let old = bests(for: entry.exerciseID, before: workout.startedAt) else { continue }
             var today = Bests()
             sets.forEach { today.add($0) }
+            let name = exerciseName(entry.exerciseID)
 
-            var hits: [RecordHit] = []
-            if today.weight > old.weight, let set = today.weightSet {
-                hits.append(RecordHit(
-                    kind: .weight, value: Fmt.kg(today.weight), previous: Fmt.kg(old.weight),
-                    gain: "+\(Fmt.kg(today.weight - old.weight))", setID: set.id))
+            if today.weight > old.weight {
+                hits.append(RecordHit(exercise: name, kind: .weight, value: Fmt.kg(today.weight), previous: Fmt.kg(old.weight)))
             }
-            if today.reps > old.reps, let set = today.repsSet {
-                hits.append(RecordHit(
-                    kind: .reps, value: "\(today.reps) reps", previous: "\(old.reps) reps",
-                    gain: "+\(today.reps - old.reps) reps", setID: set.id))
+            if today.reps > old.reps {
+                hits.append(RecordHit(exercise: name, kind: .reps, value: "\(today.reps) reps", previous: "\(old.reps) reps"))
             }
             if today.volume > old.volume, let set = today.volumeSet {
                 hits.append(RecordHit(
-                    kind: .volume, value: Fmt.set(set), previous: old.volumeSet.map(Fmt.set) ?? Fmt.kg(old.volume),
-                    gain: "+\(Fmt.number(today.volume - old.volume)) kg × reps", setID: set.id))
-            }
-            if !hits.isEmpty {
-                records.append(ExerciseRecord(
-                    exerciseID: entry.exerciseID, exercise: exerciseName(entry.exerciseID), sets: sets, hits: hits))
+                    exercise: name, kind: .volume,
+                    value: "\(Fmt.set(set)) = \(Fmt.kg(today.volume))", previous: Fmt.kg(old.volume)))
             }
         }
-        return records
+        return hits
     }
 
     // MARK: Workout lifecycle

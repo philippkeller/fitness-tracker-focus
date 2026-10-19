@@ -43,34 +43,6 @@ struct VoiceConfig: Codable, Equatable {
         return config
     }
 
-    /// Only the playful start cues use Ramona. Keep this preset independent of the
-    /// workout voice so changing settings cannot silently replace their recordings.
-    func resolved(for part: SpeechPart) -> VoiceConfig {
-        guard part.voice == .ramona else { return self }
-        var ramona = VoiceConfig()
-        ramona.voiceId = "yUy9CCX9brt8aPVvIWy3"
-        ramona.voiceName = "Ramona - Calm and Soothing"
-        ramona.modelId = "eleven_v3"
-        ramona.stability = 1 // v3's robust delivery, rather than creative variation.
-        return ramona
-    }
-
-    /// Shared by live and prepared audio. The phrase owns the language, not Voice Lab.
-    func requestBody(for part: SpeechPart) -> [String: Any] {
-        var settings: [String: Any] = ["stability": stability]
-        if modelId != "eleven_v3" {
-            if let value = similarityBoost { settings["similarity_boost"] = value }
-            if let value = style { settings["style"] = value }
-            if let value = speed { settings["speed"] = value }
-            if let value = useSpeakerBoost { settings["use_speaker_boost"] = value }
-        }
-        var body: [String: Any] = ["text": part.text, "model_id": modelId, "voice_settings": settings]
-        // Multilingual v2 detects language from the written-out text; other models
-        // take the sentence language, never a stale Voice Lab override.
-        if modelId != "eleven_multilingual_v2" { body["language_code"] = part.language }
-        return body
-    }
-
     /// Part of the cache file name: changing any setting means new audio.
     var cacheKey: String {
         let encoder = JSONEncoder()
@@ -148,26 +120,24 @@ actor VoiceCache {
         self.directory = directory
     }
 
-    nonisolated func fileURL(for part: SpeechPart, config: VoiceConfig) -> URL {
-        let config = config.resolved(for: part)
-        let hash = SHA256.hash(data: Data(("speech-v2|" + config.cacheKey + "|" + part.language + "|" + part.text).utf8))
+    nonisolated func fileURL(for text: String, config: VoiceConfig) -> URL {
+        let hash = SHA256.hash(data: Data((config.cacheKey + "|" + text).utf8))
             .map { String(format: "%02x", $0) }
             .joined()
         return directory.appendingPathComponent(hash + ".mp3")
     }
 
-    nonisolated func isCached(_ part: SpeechPart, config: VoiceConfig) -> Bool {
-        FileManager.default.fileExists(atPath: fileURL(for: part, config: config).path)
+    nonisolated func isCached(_ text: String, config: VoiceConfig) -> Bool {
+        FileManager.default.fileExists(atPath: fileURL(for: text, config: config).path)
     }
 
     /// Cached file, or generates it now.
-    func audio(for part: SpeechPart, config: VoiceConfig) async throws -> URL {
-        let config = config.resolved(for: part)
-        let url = fileURL(for: part, config: config)
+    func audio(for text: String, config: VoiceConfig) async throws -> URL {
+        let url = fileURL(for: text, config: config)
         if FileManager.default.fileExists(atPath: url.path) { return url }
         if let running = inFlight[url.lastPathComponent] { return try await running.value }
 
-        let task = Task { try await Self.generate(part, config: config, to: url) }
+        let task = Task { try await Self.generate(text, config: config, to: url) }
         inFlight[url.lastPathComponent] = task
         defer { inFlight[url.lastPathComponent] = nil }
         return try await task.value
@@ -185,18 +155,28 @@ actor VoiceCache {
         return (files.count, bytes)
     }
 
-    private static func generate(_ part: SpeechPart, config: VoiceConfig, to url: URL) async throws -> URL {
+    private static func generate(_ text: String, config: VoiceConfig, to url: URL) async throws -> URL {
         guard let key = Keychain.elevenLabsKey, !key.isEmpty else { throw VoiceError.noKey }
         var components = URLComponents(string: "https://api.elevenlabs.io/v1/text-to-speech/")!
         components.path += config.voiceId
         components.queryItems = [URLQueryItem(name: "output_format", value: "mp3_44100_128")]
+
+        var settings: [String: Any] = ["stability": config.stability]
+        if config.modelId != "eleven_v3" {
+            if let value = config.similarityBoost { settings["similarity_boost"] = value }
+            if let value = config.style { settings["style"] = value }
+            if let value = config.speed { settings["speed"] = value }
+            if let value = config.useSpeakerBoost { settings["use_speaker_boost"] = value }
+        }
+        var body: [String: Any] = ["text": text, "model_id": config.modelId, "voice_settings": settings]
+        if let language = config.languageCode { body["language_code"] = language }
 
         var request = URLRequest(url: components.url!)
         request.httpMethod = "POST"
         request.timeoutInterval = 15
         request.setValue(key, forHTTPHeaderField: "xi-api-key")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: config.requestBody(for: part))
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {

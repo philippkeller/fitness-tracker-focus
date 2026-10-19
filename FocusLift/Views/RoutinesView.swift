@@ -47,10 +47,6 @@ struct RoutinesView: View {
                     }
                     .disabled(store.activeWorkout != nil)
                 }
-
-                Section("Gym habit") {
-                    GymAttendanceView()
-                }
             }
             .navigationTitle("Train")
             .confirmationDialog("Cancel this workout?", isPresented: $confirmCancel, titleVisibility: .visible) {
@@ -85,7 +81,6 @@ struct RoutineEditorView: View {
     @Binding var showWorkout: Bool
     @State private var showPicker = false
     @State private var showReorder = false
-    @State private var historyDestination: ExerciseHistoryDestination?
 
     var body: some View {
         if let routine = store.routineBinding(routineID) {
@@ -95,9 +90,7 @@ struct RoutineEditorView: View {
                         .font(.title3.bold())
                 }
 
-                EntriesEditor(entries: routine.entries, mode: .routine) { exerciseID in
-                    historyDestination = ExerciseHistoryDestination(id: exerciseID)
-                }
+                EntriesEditor(entries: routine.entries, mode: .routine)
 
                 Section {
                     Button {
@@ -135,9 +128,6 @@ struct RoutineEditorView: View {
             }
             .sheet(isPresented: $showReorder) {
                 ReorderView(entries: routine.entries)
-            }
-            .sheet(item: $historyDestination) { destination in
-                ExerciseHistoryView(exerciseID: destination.id)
             }
         } else {
             ContentUnavailableView("Routine not found", systemImage: "questionmark.folder")
