@@ -19,33 +19,22 @@ struct GymAttendanceView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                HStack(alignment: .top, spacing: 6) {
-                    VStack(spacing: cellSpacing) {
-                        Color.clear.frame(height: 16)
-                        ForEach(0..<7) { day in
-                            Text(["Mon", "", "Wed", "", "Fri", "", "Sun"][day])
-                                .font(.system(size: 9))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 26, height: cellSize)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    ScrollView(.horizontal) {
-                        HStack(alignment: .top, spacing: cellSpacing) {
-                            ForEach(attendance.weeks, id: \.first) { week in
-                                VStack(spacing: cellSpacing) {
-                                    monthLabel(for: week[0], attendance: attendance)
-                                    ForEach(week, id: \.self) { day in
-                                        dayCell(day, attendance: attendance)
-                                    }
+                ScrollView(.horizontal) {
+                    HStack(alignment: .top, spacing: cellSpacing) {
+                        ForEach(attendance.weeks, id: \.first) { week in
+                            VStack(spacing: cellSpacing) {
+                                monthLabel(for: week[0], attendance: attendance)
+                                ForEach(week, id: \.self) { day in
+                                    dayCell(day, attendance: attendance)
                                 }
                             }
                         }
-                        .padding(.vertical, 2)
                     }
-                    .defaultScrollAnchor(.trailing)
-                    .scrollIndicators(.hidden)
+                    .padding(.vertical, 2)
                 }
+                .frame(maxWidth: .infinity)
+                .defaultScrollAnchor(.trailing)
+                .scrollIndicators(.hidden)
                 HStack {
                     Text("Last 52 weeks · swipe for earlier weeks")
                     Spacer(minLength: 4)
