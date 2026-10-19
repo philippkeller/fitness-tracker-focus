@@ -135,7 +135,6 @@ private struct SetHeaderRow: View {
             Text("Previous").frame(maxWidth: .infinity)
             Text("kg").frame(width: 58)
             Text("Reps").frame(width: 44).padding(.trailing, 28)
-            Text("Rest").frame(width: 40)
             if showCheck {
                 Image(systemName: "checkmark").frame(width: 34)
             }
@@ -152,6 +151,7 @@ private struct SetRow: View {
     let mode: EditorMode
     let isCurrent: Bool
     let onCheck: () -> Void
+    @FocusState private var repsFocused: Bool
 
     var body: some View {
         HStack(spacing: 6) {
@@ -174,6 +174,7 @@ private struct SetRow: View {
 
             HStack(spacing: 4) {
                 TextField("reps", value: $set.reps, format: .number)
+                    .focused($repsFocused)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
                     .frame(width: 44, height: 30)
@@ -203,16 +204,9 @@ private struct SetRow: View {
                 }
                 .font(.caption.bold())
                 .buttonStyle(.borderless)
-            }
-
-            Menu {
-                ForEach(Fmt.restOptions, id: \.self) { seconds in
-                    Button(Fmt.rest(seconds)) { set.rest = seconds }
-                }
-            } label: {
-                Text(Fmt.rest(set.rest))
-                    .font(.caption.monospacedDigit())
-                    .frame(width: 40, height: 30)
+                .opacity(repsFocused ? 1 : 0)
+                .allowsHitTesting(repsFocused)
+                .accessibilityHidden(!repsFocused)
             }
 
             if mode == .workout {
