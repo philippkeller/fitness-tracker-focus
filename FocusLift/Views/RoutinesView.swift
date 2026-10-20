@@ -47,6 +47,10 @@ struct RoutinesView: View {
                     }
                     .disabled(store.activeWorkout != nil)
                 }
+
+                Section("Gym days") {
+                    GymCalendar()
+                }
             }
             .navigationTitle("Train")
             .confirmationDialog("Cancel this workout?", isPresented: $confirmCancel, titleVisibility: .visible) {
