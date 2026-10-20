@@ -7,6 +7,9 @@ struct SetInfo {
     var count: Int
     var weight: Double
     var reps: Int
+
+    /// No weight and no reps, e.g. a warm-up on the cross trainer: the app only waits for "done".
+    var isUntracked: Bool { weight == 0 && reps == 0 }
 }
 
 /// Everything the app says, in German or English.
@@ -35,7 +38,7 @@ struct Phrases {
         var parts: [String] = []
         if withName { parts.append(sentence(info.exercise)) }
         if withNote, !info.note.isEmpty { parts.append(sentence(info.note)) }
-        parts.append(setNumber(info.number, of: info.count))
+        if !(info.isUntracked && info.count == 1) { parts.append(setNumber(info.number, of: info.count)) }
         if let load = load(weight: info.weight, reps: info.reps) { parts.append(load) }
         return parts
     }
@@ -87,7 +90,9 @@ struct Phrases {
             result.append(sentence(exercise?.name ?? "Exercise"))
             if let note = exercise?.note, !note.isEmpty { result.append(sentence(note)) }
             for (index, set) in entry.sets.enumerated() {
-                result.append(setNumber(index + 1, of: entry.sets.count))
+                if !(set.weight == 0 && set.reps == 0 && entry.sets.count == 1) {
+                    result.append(setNumber(index + 1, of: entry.sets.count))
+                }
                 if let load = load(weight: set.weight, reps: set.reps) { result.append(load) }
                 if set.rest > 0 { result.append(rest(set.rest)) }
             }

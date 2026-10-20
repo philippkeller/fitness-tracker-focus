@@ -42,7 +42,14 @@ enum Fmt {
     }
 
     static func load(weight: Double, reps: Int) -> String {
-        weight > 0 ? "\(kg(weight)) × \(reps)" : "\(reps) reps"
+        if weight == 0 && reps == 0 { return "–" }
+        return weight > 0 ? "\(kg(weight)) × \(reps)" : "\(reps) reps"
+    }
+
+    /// "Set 2 of 3 · 17.5 kg × 10", or nil for a single set without weight and reps (a warm-up).
+    static func position(_ info: SetInfo) -> String? {
+        if info.isUntracked && info.count == 1 { return nil }
+        return "Set \(info.number) of \(info.count) · \(load(weight: info.weight, reps: info.reps))"
     }
 
     static func set(_ set: WorkSet) -> String {

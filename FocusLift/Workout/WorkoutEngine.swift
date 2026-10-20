@@ -324,7 +324,9 @@ final class WorkoutEngine {
         case .idle:
             return
         case .resting(let until, let total):
-            let next = currentInfo.map { "Next: \($0.exercise) · \(Fmt.load(weight: $0.weight, reps: $0.reps))" } ?? ""
+            let next = currentInfo.map { info in
+                info.isUntracked ? "Next: \(info.exercise)" : "Next: \(info.exercise) · \(Fmt.load(weight: info.weight, reps: info.reps))"
+            } ?? ""
             audio.setNowPlaying(
                 title: "Rest", subtitle: next, album: song,
                 duration: TimeInterval(total), elapsed: TimeInterval(total) - until.timeIntervalSinceNow)
@@ -332,7 +334,7 @@ final class WorkoutEngine {
             if let info = currentInfo {
                 audio.setNowPlaying(
                     title: info.exercise,
-                    subtitle: "Set \(info.number)/\(info.count) · \(Fmt.load(weight: info.weight, reps: info.reps))",
+                    subtitle: Fmt.position(info) ?? "Press once when done",
                     album: song)
             }
         case .complete:

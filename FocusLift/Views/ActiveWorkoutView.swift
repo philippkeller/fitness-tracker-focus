@@ -165,7 +165,7 @@ private struct StatusCard: View {
             .font(.system(size: 64, weight: .bold, design: .rounded).monospacedDigit())
         ProgressView(value: min(Double(total), max(0, Double(total) - remaining)), total: Double(total))
         if let next = engine.currentInfo {
-            Text("Next: \(next.exercise) · set \(next.number)/\(next.count) · \(Fmt.load(weight: next.weight, reps: next.reps))")
+            Text(Fmt.position(next).map { "Next: \(next.exercise) · \($0)" } ?? "Next: \(next.exercise)")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
         }
@@ -190,13 +190,13 @@ private struct StatusCard: View {
             Text(current.exercise)
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
-            Text("Set \(current.number) of \(current.count) · \(Fmt.load(weight: current.weight, reps: current.reps))")
+            Text(Fmt.position(current) ?? "Tap done when you're finished")
                 .font(.headline)
                 .foregroundStyle(.secondary)
             Button {
                 engine.primaryAction()
             } label: {
-                Label("Set done", systemImage: "checkmark")
+                Label(Fmt.position(current) == nil ? "Done" : "Set done", systemImage: "checkmark")
                     .font(.title3.bold())
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
