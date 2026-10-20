@@ -2,12 +2,16 @@ import SwiftUI
 
 /// GitHub-style grid of gym days: one column per week (Monday on top), newest week on the right.
 /// Darker green means more sets that day. Scrolls back up to a year.
+/// Tap a day to see its workouts below the grid (the last workout day is shown until then).
 struct GymCalendar: View {
     @Environment(AppStore.self) private var store
     var weeks = 53
 
     private let cell: CGFloat = 14
     private let gap: CGFloat = 3
+
+    @State private var selectedDay: Date?
+    @State private var summary: Workout?
 
     private static var calendar: Calendar {
         var calendar = Calendar.current
@@ -61,9 +65,15 @@ struct GymCalendar: View {
                                         .fill(color(sets: sets[day] ?? 0, future: day > today))
                                         .frame(width: cell, height: cell)
                                         .overlay {
-                                            if day == today {
+                                            if day == shownDay(sets) {
+                                                RoundedRectangle(cornerRadius: 3).stroke(Color.accentColor, lineWidth: 2)
+                                            } else if day == today {
                                                 RoundedRectangle(cornerRadius: 3).stroke(Color.primary.opacity(0.6), lineWidth: 1)
                                             }
+                                        }
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            if sets[day] != nil { selectedDay = day }
                                         }
                                 }
                             }
@@ -71,6 +81,10 @@ struct GymCalendar: View {
                     }
                 }
                 .defaultScrollAnchor(.trailing)
+            }
+
+            if let day = shownDay(sets) {
+                dayDetails(day)
             }
 
             HStack(spacing: gap) {
@@ -87,6 +101,63 @@ struct GymCalendar: View {
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 6)
+        .sheet(item: $summary) { workout in
+            NavigationStack {
+                WorkoutSummaryView(workout: workout, isSheet: true)
+            }
+            .environment(store)
+        }
+    }
+
+    /// The tapped day, or the last workout day.
+    private func shownDay(_ sets: [Date: Int]) -> Date? {
+        selectedDay ?? sets.keys.max()
+    }
+
+    /// The date and each workout of that day: routine name and its exercises. Tapping one opens its summary.
+    private func dayDetails(_ day: Date) -> some View {
+        let workouts = store.history.filter { Self.calendar.startOfDay(for: $0.startedAt) == day }
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(day.formatted(.dateTime.weekday(.wide).day().month(.wide)))
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+            ForEach(workouts) { workout in
+                Button {
+                    summary = workout
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(workout.name)
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.primary)
+                            Text(exerciseNames(workout))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                        }
+                        Spacer()
+                        Text("\(workout.doneSets.count) sets")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.bold())
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(10)
+                    .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+    }
+
+    /// Exercises with at least one done set, or all of them if none were ticked off.
+    private func exerciseNames(_ workout: Workout) -> String {
+        let done = workout.entries.filter { $0.sets.contains(where: \.done) }
+        return (done.isEmpty ? workout.entries : done)
+            .map { store.exerciseName($0.exerciseID) }
+            .joined(separator: ", ")
     }
 
     /// Done sets per day. A finished workout counts as at least one, so warm-up-only days still show.
