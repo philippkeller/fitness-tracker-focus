@@ -97,3 +97,50 @@ struct WorkoutSummaryView: View {
         }
     }
 }
+
+/// Every past session of one exercise, newest first: date and the sets done that day.
+struct ExerciseHistoryView: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let exerciseID: UUID
+
+    var body: some View {
+        let sessions = store.sessions(for: exerciseID)
+        NavigationStack {
+            List {
+                ForEach(sessions, id: \.workout.id) { session in
+                    Section {
+                        ForEach(Array(session.sets.enumerated()), id: \.element.id) { index, set in
+                            HStack {
+                                Text("\(index + 1)")
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 24)
+                                Text(Fmt.set(set))
+                            }
+                        }
+                    } header: {
+                        HStack {
+                            Text(session.workout.startedAt.formatted(date: .abbreviated, time: .omitted))
+                            Spacer()
+                            Text(session.workout.name)
+                        }
+                    }
+                }
+            }
+            .overlay {
+                if sessions.isEmpty {
+                    ContentUnavailableView(
+                        "No history yet", systemImage: "clock",
+                        description: Text("Finished workouts with this exercise show up here."))
+                }
+            }
+            .navigationTitle(store.exerciseName(exerciseID))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+}

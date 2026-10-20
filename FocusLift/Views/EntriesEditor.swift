@@ -39,6 +39,8 @@ private struct EntrySection: View {
     let currentSetID: UUID?
     let onRemove: () -> Void
 
+    @State private var showHistory = false
+
     var body: some View {
         Section {
             NoteField(text: store.noteBinding(for: entry.exerciseID))
@@ -76,6 +78,11 @@ private struct EntrySection: View {
                     .strikethrough(entry.skipped)
                 Spacer()
                 Menu {
+                    Button {
+                        showHistory = true
+                    } label: {
+                        Label("History", systemImage: "clock.arrow.circlepath")
+                    }
                     Menu("Rest for all sets") {
                         ForEach(Fmt.restOptions, id: \.self) { seconds in
                             Button(Fmt.rest(seconds)) {
@@ -92,6 +99,9 @@ private struct EntrySection: View {
                 }
             }
             .textCase(nil)
+        }
+        .sheet(isPresented: $showHistory) {
+            ExerciseHistoryView(exerciseID: entry.exerciseID)
         }
     }
 

@@ -124,6 +124,17 @@ final class AppStore {
         return []
     }
 
+    /// Every finished workout that has completed sets of the exercise, newest first, with those sets.
+    func sessions(for exerciseID: UUID) -> [(workout: Workout, sets: [WorkSet])] {
+        history.compactMap { workout in
+            let sets = workout.entries
+                .filter { $0.exerciseID == exerciseID }
+                .flatMap(\.sets)
+                .filter(\.done)
+            return sets.isEmpty ? nil : (workout, sets)
+        }
+    }
+
     /// Sets for an exercise newly added to a routine or workout: last time's values, or 3 empty sets.
     func defaultSets(for exerciseID: UUID) -> [WorkSet] {
         let previous = previousSets(for: exerciseID)
