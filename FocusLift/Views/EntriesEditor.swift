@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum EditorMode {
     case routine
@@ -144,6 +145,11 @@ private struct SetRow: View {
     let isCurrent: Bool
     let onCheck: () -> Void
 
+    @FocusState private var weightFocused: Bool
+    @FocusState private var repsFocused: Bool
+    /// The reps field edits text, so the +/− buttons can change the number while it's being typed.
+    @State private var repsText = ""
+
     var body: some View {
         HStack(spacing: 6) {
             Text("\(number)")
@@ -163,12 +169,36 @@ private struct SetRow: View {
                 .multilineTextAlignment(.center)
                 .frame(width: 58, height: 30)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+                .focused($weightFocused)
+                .onChange(of: weightFocused) { _, focused in
+                    // Select the whole number, so typing replaces it.
+                    guard focused else { return }
+                    DispatchQueue.main.async {
+                        UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
+                    }
+                }
 
-            TextField("reps", value: $set.reps, format: .number)
+            TextField("reps", text: $repsText)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.center)
                 .frame(width: 44, height: 30)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+                .focused($repsFocused)
+                .overlay(alignment: .trailing) {
+                    if repsFocused { repsStepper.offset(x: 40) }
+                }
+                // Drawn above the rest column, which the buttons cover while editing.
+                .zIndex(1)
+                .onAppear { repsText = "\(set.reps)" }
+                .onChange(of: repsText) { _, text in
+                    if let reps = Int(text), reps != set.reps { set.reps = reps }
+                }
+                .onChange(of: set.reps) { _, reps in
+                    if Int(repsText) != reps { repsText = "\(reps)" }
+                }
+                .onChange(of: repsFocused) { _, focused in
+                    if !focused { repsText = "\(set.reps)" }
+                }
 
             Menu {
                 ForEach(Fmt.restOptions, id: \.self) { seconds in
@@ -192,6 +222,30 @@ private struct SetRow: View {
             }
         }
         .listRowBackground(set.done ? Color.green.opacity(0.15) : (isCurrent ? Color.accentColor.opacity(0.18) : nil))
+    }
+
+    /// + above, − below, to the right of the reps field. Only shown while the field is being edited.
+    private var repsStepper: some View {
+        VStack(spacing: 0) {
+            Button {
+                set.reps += 1
+            } label: {
+                Image(systemName: "plus")
+                    .frame(width: 36, height: 20)
+            }
+            Divider()
+            Button {
+                set.reps = max(0, set.reps - 1)
+            } label: {
+                Image(systemName: "minus")
+                    .frame(width: 36, height: 20)
+            }
+        }
+        .font(.callout.bold())
+        .buttonStyle(.borderless)
+        .frame(width: 36)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
     }
 }
 
