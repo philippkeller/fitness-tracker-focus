@@ -83,9 +83,15 @@ enum RecordKind {
 }
 
 struct RecordHit: Identifiable {
-    let id = UUID()
     let exercise: String
     let kind: RecordKind
     let value: String
     let previous: String
+    /// "+2.5 kg", "+3 reps".
+    let gain: String
+    /// Where it happened: "Set 3 · 60 kg × 8".
+    let detail: String
+
+    /// Stable across recomputes, so the cards keep their state.
+    var id: String { "\(exercise)|\(kind)" }
 }

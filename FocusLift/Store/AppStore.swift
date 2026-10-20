@@ -165,25 +165,37 @@ final class AppStore {
         var hits: [RecordHit] = []
         var seen = Set<UUID>()
         for entry in workout.entries where seen.insert(entry.exerciseID).inserted {
-            let sets = workout.entries
+            // Numbered like the editor shows them, so the card can say which set it was.
+            let allSets = workout.entries
                 .filter { $0.exerciseID == entry.exerciseID }
                 .flatMap(\.sets)
-                .filter { $0.done && $0.reps > 0 }
+            let sets = allSets.filter { $0.done && $0.reps > 0 }
             guard !sets.isEmpty, let old = bests(for: entry.exerciseID, before: workout.startedAt) else { continue }
             var today = Bests()
             sets.forEach { today.add($0) }
             let name = exerciseName(entry.exerciseID)
+            func detail(_ set: WorkSet?) -> String {
+                guard let set, let index = allSets.firstIndex(where: { $0.id == set.id }) else { return "" }
+                return "Set \(index + 1) · \(Fmt.set(set))"
+            }
 
             if today.weight > old.weight {
-                hits.append(RecordHit(exercise: name, kind: .weight, value: Fmt.kg(today.weight), previous: Fmt.kg(old.weight)))
+                hits.append(RecordHit(
+                    exercise: name, kind: .weight, value: Fmt.kg(today.weight), previous: Fmt.kg(old.weight),
+                    gain: "+" + Fmt.kg(today.weight - old.weight),
+                    detail: detail(sets.first { $0.weight == today.weight })))
             }
             if today.reps > old.reps {
-                hits.append(RecordHit(exercise: name, kind: .reps, value: "\(today.reps) reps", previous: "\(old.reps) reps"))
+                hits.append(RecordHit(
+                    exercise: name, kind: .reps, value: "\(today.reps) reps", previous: "\(old.reps) reps",
+                    gain: "+\(today.reps - old.reps) reps",
+                    detail: detail(sets.first { $0.reps == today.reps })))
             }
             if today.volume > old.volume, let set = today.volumeSet {
                 hits.append(RecordHit(
-                    exercise: name, kind: .volume,
-                    value: "\(Fmt.set(set)) = \(Fmt.kg(today.volume))", previous: Fmt.kg(old.volume)))
+                    exercise: name, kind: .volume, value: Fmt.kg(today.volume), previous: Fmt.kg(old.volume),
+                    gain: "+" + Fmt.kg(today.volume - old.volume),
+                    detail: detail(set)))
             }
         }
         return hits

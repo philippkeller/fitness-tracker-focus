@@ -43,33 +43,40 @@ struct WorkoutSummaryView: View {
     let workout: Workout
     var isSheet = false
 
+    /// All record cards in one picture, for "Share all".
+    @State private var allImage: Image?
+
     var body: some View {
         let records = store.records(in: workout)
         List {
+            if !records.isEmpty {
+                Section {
+                    ForEach(records) { record in
+                        RecordRow(record: record, date: workout.startedAt)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                            .listRowBackground(Color.clear)
+                    }
+                } header: {
+                    HStack {
+                        Text(records.count == 1 ? "New record" : "\(records.count) new records")
+                        Spacer()
+                        if records.count > 1, let allImage {
+                            ShareLink(item: allImage, preview: SharePreview("\(workout.name) records", image: allImage)) {
+                                Label("Share all", systemImage: "square.and.arrow.up")
+                            }
+                            .font(.caption.bold())
+                        }
+                    }
+                }
+            }
+
             Section {
                 LabeledContent("Date", value: workout.startedAt.formatted(date: .abbreviated, time: .shortened))
                 LabeledContent("Duration", value: Fmt.clock(workout.duration))
                 LabeledContent("Sets", value: "\(workout.doneSets.count)")
                 LabeledContent("Volume", value: Fmt.kg(workout.volume))
-            }
-
-            Section("Records") {
                 if records.isEmpty {
-                    Text("No new records this time.")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(records) { record in
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: "trophy.fill")
-                            .foregroundStyle(.yellow)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(record.exercise).font(.headline)
-                            Text("\(record.kind.title): \(record.value)")
-                            Text("Before: \(record.previous)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    LabeledContent("Records", value: "None this time")
                 }
             }
 
@@ -88,6 +95,11 @@ struct WorkoutSummaryView: View {
         }
         .navigationTitle(workout.name)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if records.count > 1, allImage == nil {
+                allImage = RecordCard.shareImage(records, date: workout.startedAt)
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 if isSheet {
