@@ -13,6 +13,12 @@ final class AudioController {
     var onInterruptionEnded: (() -> Void)?
 
     private var silence: AVAudioPlayer?
+    /// Short tick played the moment a press arrives, before the voice (which can take a moment to load).
+    private lazy var click: AVAudioPlayer? = {
+        let player = try? AVAudioPlayer(data: AudioController.clickWAV())
+        player?.prepareToPlay()
+        return player
+    }()
     private var isActive = false
     private var lastPrimary = Date.distantPast
     private var interruptionObserver: NSObjectProtocol?
@@ -35,6 +41,7 @@ final class AudioController {
         }
         if silence == nil { silence = Self.makeSilencePlayer() }
         silence?.play()
+        click?.prepareToPlay()
         installCommands()
         isActive = true
     }
@@ -78,11 +85,13 @@ final class AudioController {
         }
         center.nextTrackCommand.isEnabled = true
         center.nextTrackCommand.addTarget { [weak self] _ in
+            self?.playClick()
             self?.onNext?()
             return .success
         }
         center.previousTrackCommand.isEnabled = true
         center.previousTrackCommand.addTarget { [weak self] _ in
+            self?.playClick()
             self?.onPrevious?()
             return .success
         }
@@ -105,7 +114,14 @@ final class AudioController {
         // Guard against iOS delivering one press as two commands.
         guard Date().timeIntervalSince(lastPrimary) > 0.6 else { return }
         lastPrimary = Date()
+        playClick()
         onPrimary?()
+    }
+
+    private func playClick() {
+        guard let click else { return }
+        click.currentTime = 0
+        click.play()
     }
 
     // MARK: Interruptions (calls, Siri, alarms)
@@ -134,7 +150,22 @@ final class AudioController {
 
     /// 16-bit mono PCM WAV containing only zeros.
     private static func silentWAV(seconds: Int, sampleRate: Int = 22_050) -> Data {
-        let dataSize = seconds * sampleRate * 2
+        wav(samples: [Int16](repeating: 0, count: seconds * sampleRate), sampleRate: sampleRate)
+    }
+
+    /// 40 ms tick: a 1.8 kHz tone that fades out quickly.
+    private static func clickWAV(sampleRate: Int = 44_100) -> Data {
+        let count = sampleRate * 40 / 1000
+        let samples = (0..<count).map { index -> Int16 in
+            let time = Double(index) / Double(sampleRate)
+            let value = sin(2 * Double.pi * 1800 * time) * exp(-time * 120)
+            return Int16(value * 0.8 * Double(Int16.max))
+        }
+        return wav(samples: samples, sampleRate: sampleRate)
+    }
+
+    private static func wav(samples: [Int16], sampleRate: Int) -> Data {
+        let dataSize = samples.count * 2
         var data = Data()
         func append(_ string: String) { data.append(contentsOf: Array(string.utf8)) }
         func append32(_ value: UInt32) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
@@ -144,7 +175,7 @@ final class AudioController {
         append("fmt "); append32(16); append16(1); append16(1)
         append32(UInt32(sampleRate)); append32(UInt32(sampleRate * 2)); append16(2); append16(16)
         append("data"); append32(UInt32(dataSize))
-        data.append(Data(count: dataSize))
+        for sample in samples { append16(UInt16(bitPattern: sample)) }
         return data
     }
 }
