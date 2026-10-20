@@ -9,7 +9,8 @@ struct SetPosition: Equatable {
 
 /// Runs the active workout: tracks the current set, the rest timer, AirPods presses and announcements.
 ///
-/// AirPods: 1× = set done / skip rest, 2× = next song (or skip exercise), 3× = repeat announcement.
+/// AirPods: 1× = set done / skip rest, 2× = repeat announcement, 3× = skip exercise.
+/// Songs are never skipped with the AirPods, only in the app.
 @Observable
 final class WorkoutEngine {
     enum Phase: Equatable {
@@ -39,8 +40,8 @@ final class WorkoutEngine {
         self.speaker = speaker
 
         audio.onPrimary = { [weak self] in self?.primaryAction() }
-        audio.onNext = { [weak self] in self?.doublePress() }
-        audio.onPrevious = { [weak self] in self?.repeatAnnouncement() }
+        audio.onNext = { [weak self] in self?.repeatAnnouncement() }
+        audio.onPrevious = { [weak self] in self?.skipExercise() }
         audio.onInterruptionEnded = { [weak music] in music?.resumeAfterInterruption() }
         music.onTrackChange = { [weak self] in self?.updateNowPlaying() }
         speaker.onSpeakingChanged = { [weak music] speaking in music?.setDucked(speaking) }
@@ -256,14 +257,6 @@ final class WorkoutEngine {
             }
         }
         return (generated, nil)
-    }
-
-    private func doublePress() {
-        if Prefs.doublePressSkipsSong && music.isPlaying {
-            music.next()
-        } else {
-            skipExercise()
-        }
     }
 
     private func endRest() {
