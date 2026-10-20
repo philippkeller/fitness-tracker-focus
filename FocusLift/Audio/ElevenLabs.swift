@@ -4,8 +4,8 @@ import Security
 
 /// ElevenLabs voice settings. The JSON matches what tools/voice-lab.html shows under "Settings for FocusLift".
 struct VoiceConfig: Codable, Equatable {
-    var voiceId = "cgSgspJ2msm6clMCkdW9"
-    var voiceName: String? = "Jessica"
+    var voiceId = "yUy9CCX9brt8aPVvIWy3"
+    var voiceName: String? = "Ramona"
     var modelId = "eleven_v3"
     var stability = 0.5
     var similarityBoost: Double?

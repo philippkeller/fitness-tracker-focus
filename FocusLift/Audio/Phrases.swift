@@ -26,7 +26,12 @@ struct Phrases {
     }
 
     var started: String { german ? "Training gestartet." : "Workout started." }
-    var go: String { german ? "Los!" : "Go!" }
+    /// Said when the next set starts, picked at random each time.
+    static let goShouts = [
+        "Chewbacca!", "Lölihund!", "Schnabeltasse!", "Gigeligugeli!", "Rinderspaziergang!",
+        "Über de Tisch übereblaase!", "Sapperlott!", "Populär!", "ze zeffen singging sdeps!", "oh, jetzt, ja!", "Hammertime!",
+    ]
+    var go: String { Self.goShouts.randomElement() ?? "Los!" }
     var tenSeconds: String { german ? "Noch zehn Sekunden." : "Ten seconds." }
     var skipped: String { german ? "Übung übersprungen." : "Exercise skipped." }
     var next: String { german ? "Danach:" : "Next:" }
@@ -84,7 +89,7 @@ struct Phrases {
 
     /// Every sentence a workout with these exercises can say (except "time left", which depends on the moment).
     func allSentences(for entries: [ExerciseEntry], store: AppStore) -> [String] {
-        var result = [started, go, tenSeconds, skipped, next, complete]
+        var result = [started, tenSeconds, skipped, next, complete] + Self.goShouts
         for entry in entries {
             let exercise = store.exercise(entry.exerciseID)
             result.append(sentence(exercise?.name ?? "Exercise"))
