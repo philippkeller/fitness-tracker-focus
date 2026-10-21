@@ -2,14 +2,14 @@ import AVFoundation
 
 /// Speaks announcements with the ElevenLabs voice (cached per sentence), or with the
 /// built-in iOS voice when ElevenLabs is off or a sentence can't be generated (no signal, no credits).
-final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
+final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
     /// Used to lower the music while speaking.
     var onSpeakingChanged: ((Bool) -> Void)?
 
     private let synthesizer = AVSpeechSynthesizer()
     private var voices: [String: AVSpeechSynthesisVoice] = [:]
-    private var player: AVAudioPlayer?
-    private var queue: [URL] = []
+    /// ElevenLabs audio is playing (through AudioOutput, which makes it louder).
+    private var playing = false
     /// Bumped on every new announcement, so a slow download can't talk over a newer one.
     private var generation = 0
 
@@ -62,10 +62,9 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
 
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
-        if player != nil || !queue.isEmpty {
-            player?.stop()
-            player = nil
-            queue = []
+        if playing {
+            AudioOutput.shared.stopVoice()
+            playing = false
             onSpeakingChanged?(false)
         }
     }
@@ -73,35 +72,14 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegat
     // MARK: ElevenLabs audio
 
     private func playFiles(_ files: [URL]) -> Bool {
-        queue = files
-        guard playNext() else { return false }
+        let started = AudioOutput.shared.playVoice(files) { [weak self] in
+            self?.playing = false
+            self?.onSpeakingChanged?(false)
+        }
+        guard started else { return false }
+        playing = true
         onSpeakingChanged?(true)
         return true
-    }
-
-    private func playNext() -> Bool {
-        while !queue.isEmpty {
-            let url = queue.removeFirst()
-            if let player = try? AVAudioPlayer(contentsOf: url) {
-                player.delegate = self
-                if player.play() {
-                    self.player = player
-                    return true
-                }
-            } else {
-                // A broken file would otherwise fail forever; the next call generates it again.
-                try? FileManager.default.removeItem(at: url)
-            }
-        }
-        player = nil
-        return false
-    }
-
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        DispatchQueue.main.async {
-            guard player === self.player else { return }
-            if !self.playNext() { self.onSpeakingChanged?(false) }
-        }
     }
 
     // MARK: iOS voice

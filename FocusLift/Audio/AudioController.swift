@@ -13,12 +13,6 @@ final class AudioController {
     var onInterruptionEnded: (() -> Void)?
 
     private var silence: AVAudioPlayer?
-    /// Short tick played the moment a press arrives, before the voice (which can take a moment to load).
-    private lazy var click: AVAudioPlayer? = {
-        let player = try? AVAudioPlayer(data: AudioController.clickWAV())
-        player?.prepareToPlay()
-        return player
-    }()
     private var isActive = false
     private var lastPrimary = Date.distantPast
     private var interruptionObserver: NSObjectProtocol?
@@ -35,13 +29,15 @@ final class AudioController {
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playback, mode: .default, options: [])
+            // Small buffers, so the click follows a press as fast as possible.
+            try? session.setPreferredIOBufferDuration(0.005)
             try session.setActive(true)
         } catch {
             print("Audio session error: \(error)")
         }
         if silence == nil { silence = Self.makeSilencePlayer() }
         silence?.play()
-        click?.prepareToPlay()
+        AudioOutput.shared.start()
         installCommands()
         isActive = true
     }
@@ -118,10 +114,9 @@ final class AudioController {
         onPrimary?()
     }
 
+    /// Short tick the moment a press arrives, before the voice (which can take a moment to load).
     private func playClick() {
-        guard let click else { return }
-        click.currentTime = 0
-        click.play()
+        AudioOutput.shared.playClick()
     }
 
     // MARK: Interruptions (calls, Siri, alarms)
@@ -132,6 +127,7 @@ final class AudioController {
               AVAudioSession.InterruptionType(rawValue: raw) == .ended else { return }
         try? AVAudioSession.sharedInstance().setActive(true)
         silence?.play()
+        AudioOutput.shared.start()
         onInterruptionEnded?()
     }
 
@@ -151,17 +147,6 @@ final class AudioController {
     /// 16-bit mono PCM WAV containing only zeros.
     private static func silentWAV(seconds: Int, sampleRate: Int = 22_050) -> Data {
         wav(samples: [Int16](repeating: 0, count: seconds * sampleRate), sampleRate: sampleRate)
-    }
-
-    /// 40 ms tick: a 1.8 kHz tone that fades out quickly.
-    private static func clickWAV(sampleRate: Int = 44_100) -> Data {
-        let count = sampleRate * 40 / 1000
-        let samples = (0..<count).map { index -> Int16 in
-            let time = Double(index) / Double(sampleRate)
-            let value = sin(2 * Double.pi * 1800 * time) * exp(-time * 120)
-            return Int16(value * 0.8 * Double(Int16.max))
-        }
-        return wav(samples: samples, sampleRate: sampleRate)
     }
 
     private static func wav(samples: [Int16], sampleRate: Int) -> Data {

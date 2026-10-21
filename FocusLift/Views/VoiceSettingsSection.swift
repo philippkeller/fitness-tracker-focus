@@ -8,6 +8,7 @@ struct VoiceSettingsSection: View {
 
     @AppStorage(Prefs.languageKey) private var language = "de"
     @AppStorage(VoiceConfig.enabledKey) private var useElevenLabs = true
+    @AppStorage(AudioOutput.boostKey) private var boost = 10.0
     @State private var apiKey = ""
     @State private var config = VoiceConfig.current
     @State private var status: String?
@@ -38,6 +39,10 @@ struct VoiceSettingsSection: View {
                 VStack(alignment: .leading) {
                     LabeledContent("Stability", value: String(format: "%.2f", config.stability))
                     Slider(value: $config.stability, in: 0...1, step: config.modelId == "eleven_v3" ? 0.5 : 0.05)
+                }
+                VStack(alignment: .leading) {
+                    LabeledContent("Louder", value: "+\(Int(boost)) dB")
+                    Slider(value: $boost, in: 0...20, step: 1)
                 }
                 Button("Paste settings from Voice Lab") { paste() }
                 Button(pending.isEmpty ? "Routines ready ✓" : "Prepare voice for routines (~\(credits) credits)") {

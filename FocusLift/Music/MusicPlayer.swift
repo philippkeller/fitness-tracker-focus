@@ -121,7 +121,7 @@ final class MusicPlayer {
     }
 
     func setDucked(_ ducked: Bool) {
-        player.volume = ducked ? 0.25 : 1.0
+        player.volume = ducked ? 0.15 : 1.0
     }
 
     func resumeAfterInterruption() {
