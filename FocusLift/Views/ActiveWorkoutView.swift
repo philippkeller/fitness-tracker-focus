@@ -151,7 +151,7 @@ private struct StatusCard: View {
     }
 
     private var airPodsHint: String {
-        "AirPods: 1× done / skip rest · 2× repeat · 3× skip exercise"
+        "AirPods: 1× done / skip rest · 2× repeat · 3× time"
     }
 
     @ViewBuilder

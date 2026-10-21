@@ -9,7 +9,7 @@ struct SetPosition: Equatable {
 
 /// Runs the active workout: tracks the current set, the rest timer, AirPods presses and announcements.
 ///
-/// AirPods: 1× = set done / skip rest, 2× = repeat announcement, 3× = skip exercise.
+/// AirPods: 1× = set done / skip rest, 2× = repeat announcement, 3× = say the time.
 /// Songs are never skipped with the AirPods, only in the app.
 @Observable
 final class WorkoutEngine {
@@ -41,7 +41,7 @@ final class WorkoutEngine {
 
         audio.onPrimary = { [weak self] in self?.primaryAction() }
         audio.onNext = { [weak self] in self?.repeatAnnouncement() }
-        audio.onPrevious = { [weak self] in self?.skipExercise() }
+        audio.onPrevious = { [weak self] in self?.sayTime() }
         audio.onInterruptionEnded = { [weak music] in music?.resumeAfterInterruption() }
         music.onTrackChange = { [weak self] in self?.updateNowPlaying() }
         speaker.onSpeakingChanged = { [weak music] speaking in music?.setDucked(speaking) }
@@ -201,6 +201,16 @@ final class WorkoutEngine {
             say([phrases.complete])
         }
         updateNowPlaying()
+    }
+
+    /// "Es ist 12 Uhr 25." with the iPhone voice.
+    func sayTime() {
+        let parts = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        let hour = parts.hour ?? 0, minute = parts.minute ?? 0
+        let text = Prefs.language == "de"
+            ? (minute == 0 ? "Es ist \(hour) Uhr." : "Es ist \(hour) Uhr \(minute).")
+            : String(format: "It's %d:%02d.", hour, minute)
+        speaker.speakWithIPhoneVoice(text, language: Prefs.language)
     }
 
     func repeatAnnouncement() {

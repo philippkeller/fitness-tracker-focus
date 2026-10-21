@@ -60,6 +60,13 @@ final class Speaker: NSObject, AVSpeechSynthesizerDelegate {
         return fallbackReason
     }
 
+    /// Always the iPhone voice, e.g. for the time, which changes too often to cache.
+    func speakWithIPhoneVoice(_ text: String, language: String) {
+        stop()
+        generation += 1
+        speakWithSystemVoice(text, language: language)
+    }
+
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
         if playing {

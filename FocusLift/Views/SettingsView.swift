@@ -26,7 +26,7 @@ struct SettingsView: View {
                 } header: {
                     Text("AirPods")
                 } footer: {
-                    Text("1× press: set done, or skip the rest.\n2× press: repeat the last announcement.\n3× press: skip the exercise.\nThis only works while a workout is running in this app. Music from other apps (Amperfy, Spotify) would take over the presses, so play your music here.")
+                    Text("1× press: set done, or skip the rest.\n2× press: repeat the last announcement.\n3× press: say the time.\nThis only works while a workout is running in this app. Music from other apps (Amperfy, Spotify) would take over the presses, so play your music here.")
                 }
 
                 Section {

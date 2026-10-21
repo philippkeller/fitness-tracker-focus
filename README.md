@@ -14,7 +14,7 @@ A gym tracker you run with the **phone locked in your pocket**. It talks to you 
 |---|---|
 | 1× | Set done / skip rest |
 | 2× | Repeat the last announcement (time left + next set) |
-| 3× | Skip exercise |
+| 3× | Say the time |
 
 The lock screen's Now Playing widget shows the current exercise, or the rest countdown as a progress bar.
 
