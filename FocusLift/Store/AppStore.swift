@@ -124,6 +124,11 @@ final class AppStore {
         return []
     }
 
+    /// When the routine was last done. Strong imports have no routine link, so a matching name counts too.
+    func lastDone(_ routine: Routine) -> Date? {
+        history.first { $0.routineID == routine.id || $0.name == routine.name }?.startedAt
+    }
+
     /// Every finished workout that has completed sets of the exercise, newest first, with those sets.
     func sessions(for exerciseID: UUID) -> [(workout: Workout, sets: [WorkSet])] {
         history.compactMap { workout in

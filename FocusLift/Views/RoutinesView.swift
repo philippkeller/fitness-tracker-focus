@@ -23,10 +23,25 @@ struct RoutinesView: View {
                 }
 
                 Section("Routines") {
+                    let upNext = upNextRoutineID
                     ForEach(store.routines) { routine in
                         NavigationLink(value: routine.id) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(routine.name).font(.headline)
+                                HStack {
+                                    Text(routine.name).font(.headline)
+                                    if routine.id == upNext {
+                                        Text("Up next")
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.accentColor.opacity(0.2), in: Capsule())
+                                            .foregroundStyle(Color.accentColor)
+                                    }
+                                    Spacer()
+                                    Text(lastDoneText(store.lastDone(routine)))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                                 Text(routine.entries.map { store.exerciseName($0.exerciseID) }.joined(separator: ", "))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
@@ -74,6 +89,25 @@ struct RoutinesView: View {
             .navigationDestination(for: UUID.self) { id in
                 RoutineEditorView(routineID: id, showWorkout: $showWorkout)
             }
+        }
+    }
+
+    /// The routine done longest ago (never done counts as oldest), when there are at least two.
+    private var upNextRoutineID: UUID? {
+        guard store.routines.count > 1 else { return nil }
+        return store.routines.min { (store.lastDone($0) ?? .distantPast) < (store.lastDone($1) ?? .distantPast) }?.id
+    }
+
+    /// "Today", "Yesterday", "3 days ago · Tue", or "Never".
+    private func lastDoneText(_ date: Date?) -> String {
+        guard let date else { return "Never" }
+        let calendar = Calendar.current
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: Date())).day ?? 0
+        switch days {
+        case ...0: return "Today"
+        case 1: return "Yesterday"
+        case 2..<7: return "\(days) days ago · \(date.formatted(.dateTime.weekday(.abbreviated)))"
+        default: return "\(days) days ago · \(date.formatted(.dateTime.day().month(.abbreviated)))"
         }
     }
 }
