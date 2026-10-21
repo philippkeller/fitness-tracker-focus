@@ -94,6 +94,8 @@ final class WorkoutEngine {
         store.startWorkout(from: routine)
         lastCompleted = nil
         begin(announce: true)
+        // Continue the music where the last workout left it.
+        music.resumeIfIdle()
     }
 
     private func begin(announce: Bool) {

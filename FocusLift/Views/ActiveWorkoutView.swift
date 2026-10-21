@@ -303,12 +303,35 @@ private struct MusicPickerView: View {
     var body: some View {
         NavigationStack {
             List {
+                if !music.favoriteArtists.isEmpty {
+                    Section {
+                        ForEach(music.favoriteArtists) { artist in
+                            Button {
+                                shuffle(artistID: artist.id)
+                            } label: {
+                                Label(artist.name, systemImage: "shuffle")
+                                    .foregroundStyle(.primary)
+                            }
+                            .swipeActions {
+                                Button("Remove", role: .destructive) {
+                                    music.toggleFavorite(id: artist.id, name: artist.name)
+                                }
+                            }
+                        }
+                    } header: {
+                        Label("Favorite artists", systemImage: "heart.fill")
+                    } footer: {
+                        Text("Tap to shuffle all songs of the artist.")
+                    }
+                }
                 Section {
                     NavigationLink {
-                        ArtistListView { songs, start in
-                            music.play(songs: songs, startAt: start)
-                            dismiss()
-                        }
+                        ArtistListView(
+                            onPlay: { songs, start in
+                                music.play(songs: songs, startAt: start)
+                                dismiss()
+                            },
+                            onShuffle: { artistID in shuffle(artistID: artistID) })
                     } label: {
                         Label("Artists", systemImage: "music.mic")
                     }
@@ -367,10 +390,16 @@ private struct MusicPickerView: View {
         Task { await music.play(playlistID: playlistID, shuffle: shuffle) }
         dismiss()
     }
+
+    private func shuffle(artistID: String) {
+        Task { await music.shuffle(artistID: artistID) }
+        dismiss()
+    }
 }
 
 private struct ArtistListView: View {
     let onPlay: ([SubsonicSong], Int) -> Void
+    let onShuffle: (String) -> Void
 
     @Environment(MusicPlayer.self) private var music
     @State private var search = ""
@@ -386,9 +415,13 @@ private struct ArtistListView: View {
             }
             ForEach(filtered) { artist in
                 NavigationLink {
-                    ArtistSongsView(artist: artist, onPlay: onPlay)
+                    ArtistSongsView(artist: artist, onPlay: onPlay, onShuffle: onShuffle)
                 } label: {
-                    Text(artist.name)
+                    HStack {
+                        Text(artist.name)
+                        Spacer()
+                        HeartButton(artistID: artist.id, name: artist.name)
+                    }
                 }
             }
         }
@@ -410,6 +443,7 @@ private struct ArtistListView: View {
 private struct ArtistSongsView: View {
     let artist: SubsonicArtist
     let onPlay: ([SubsonicSong], Int) -> Void
+    let onShuffle: (String) -> Void
 
     @State private var songs: [SubsonicSong] = []
     @State private var loading = true
@@ -424,6 +458,13 @@ private struct ArtistSongsView: View {
             }
             if let error {
                 Text(error).foregroundStyle(.red)
+            }
+            if !songs.isEmpty {
+                Button {
+                    onShuffle(artist.id)
+                } label: {
+                    Label("Shuffle all \(songs.count) songs", systemImage: "shuffle")
+                }
             }
             ForEach(Array(songs.enumerated()), id: \.offset) { index, song in
                 Button {
@@ -448,6 +489,11 @@ private struct ArtistSongsView: View {
             }
         }
         .navigationTitle(artist.name)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                HeartButton(artistID: artist.id, name: artist.name)
+            }
+        }
         .task {
             guard let client = Prefs.subsonicClient else {
                 error = "Set up your music server in Settings."
@@ -461,5 +507,23 @@ private struct ArtistSongsView: View {
             }
             loading = false
         }
+    }
+}
+
+/// Marks an artist as a favorite, so it can be shuffled straight from the music menu.
+private struct HeartButton: View {
+    @Environment(MusicPlayer.self) private var music
+    let artistID: String
+    let name: String
+
+    var body: some View {
+        let isFavorite = music.isFavorite(artistID)
+        Button {
+            music.toggleFavorite(id: artistID, name: name)
+        } label: {
+            Image(systemName: isFavorite ? "heart.fill" : "heart")
+                .foregroundStyle(isFavorite ? Color.pink : Color.secondary)
+        }
+        .buttonStyle(.borderless)
     }
 }
