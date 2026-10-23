@@ -197,7 +197,7 @@ private struct SetRow: View {
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
                 .focused($repsFocused)
                 .overlay(alignment: .trailing) {
-                    if repsFocused { repsStepper.offset(x: 40) }
+                    if repsFocused { repsStepper.keepsKeyboard().offset(x: 40) }
                 }
                 // Drawn above the rest column, which the buttons cover while editing.
                 .zIndex(1)

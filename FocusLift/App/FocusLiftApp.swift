@@ -26,6 +26,7 @@ struct FocusLiftApp: App {
                 .environment(blocker)
                 .environment(engine)
                 .preferredColorScheme(.dark)
+                .dismissesKeyboardOnTap()
         }
     }
 }
