@@ -42,7 +42,7 @@ struct Phrases {
     func set(_ info: SetInfo, withName: Bool, withNote: Bool) -> [String] {
         var parts: [String] = []
         if withName { parts.append(sentence(info.exercise)) }
-        if withNote, !info.note.isEmpty { parts.append(sentence(info.note)) }
+        if withNote { parts += note(info.note) }
         if !(info.isUntracked && info.count == 1) { parts.append(setNumber(info.number, of: info.count)) }
         if let load = load(weight: info.weight, reps: info.reps) { parts.append(load) }
         return parts
@@ -101,7 +101,7 @@ struct Phrases {
         for entry in entries {
             let exercise = store.exercise(entry.exerciseID)
             result.append(sentence(exercise?.name ?? "Exercise"))
-            if let note = exercise?.note, !note.isEmpty { result.append(sentence(note)) }
+            result += note(exercise?.note ?? "")
             for (index, set) in entry.sets.enumerated() {
                 if !(set.weight == 0 && set.reps == 0 && entry.sets.count == 1) {
                     result.append(setNumber(index + 1, of: entry.sets.count))
@@ -112,6 +112,49 @@ struct Phrases {
         }
         var seen = Set<String>()
         return result.filter { seen.insert($0).inserted }
+    }
+
+    /// The exercise note. Machine settings at its start ("B1 6/12/XL kein Schwung!") become their own
+    /// sentence with pauses between the values, so they can be set while listening: "B eins … sechs … zwölf … X L."
+    func note(_ text: String) -> [String] {
+        let words = text.split(whereSeparator: \.isWhitespace).map(String.init)
+        let settings = words.prefix { word in
+            word.contains(where: \.isNumber) || word.contains("/")
+                || (word.count <= 2 && word.allSatisfy(\.isUppercase))
+        }
+        let rest = words.dropFirst(settings.count).joined(separator: " ")
+        var result: [String] = []
+        if !settings.isEmpty {
+            let values = settings
+                .flatMap { $0.split(separator: "/").map(String.init) }
+                .map(spokenSetting)
+                .filter { !$0.isEmpty }
+            if !values.isEmpty {
+                result.append(capitalized(values.joined(separator: " … ")) + ".")
+            }
+        }
+        if !rest.isEmpty { result.append(sentence(rest)) }
+        return result
+    }
+
+    /// "B1" → "B eins", "12" → "zwölf", "XL" → "X L".
+    private func spokenSetting(_ value: String) -> String {
+        var parts: [String] = []
+        var digits = ""
+        func flushDigits() {
+            if let number = Int(digits) { parts.append(spoken(number)) }
+            digits = ""
+        }
+        for character in value {
+            if character.isNumber {
+                digits.append(character)
+            } else {
+                flushDigits()
+                if character.isLetter { parts.append(String(character).uppercased()) }
+            }
+        }
+        flushDigits()
+        return parts.joined(separator: " ")
     }
 
     private func sentence(_ text: String) -> String {
