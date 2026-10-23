@@ -15,6 +15,8 @@ struct VoiceSettingsSection: View {
     @State private var busy = false
     @State private var pending: [String] = []
     @State private var cache = (files: 0, bytes: 0)
+    /// "Other voice…" was picked: show the voice ID field even while it still holds a preset.
+    @State private var customVoice = false
 
     var body: some View {
         Section {
@@ -27,11 +29,19 @@ struct VoiceSettingsSection: View {
                 SecureField("API key (sk_…)", text: $apiKey)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                LabeledContent("Voice ID") {
-                    TextField("Voice ID", text: $config.voiceId)
-                        .multilineTextAlignment(.trailing)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                Picker("Voice", selection: voiceSelection) {
+                    ForEach(VoiceConfig.presets) { preset in
+                        Text("\(preset.name) – \(preset.note)").tag(preset.id)
+                    }
+                    Text(isPreset ? "Other voice…" : "Other: \(config.voiceName ?? config.voiceId)").tag(Self.otherTag)
+                }
+                if !isPreset {
+                    LabeledContent("Voice ID") {
+                        TextField("Paste from ElevenLabs", text: $config.voiceId)
+                            .multilineTextAlignment(.trailing)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
                 }
                 Picker("Model", selection: $config.modelId) {
                     ForEach(VoiceConfig.models, id: \.self) { Text($0).tag($0) }
@@ -87,6 +97,27 @@ struct VoiceSettingsSection: View {
         .onChange(of: language) { _, _ in refresh() }
     }
 
+    private static let otherTag = "other"
+
+    private var isPreset: Bool {
+        !customVoice && VoiceConfig.presets.contains { $0.id == config.voiceId }
+    }
+
+    private var voiceSelection: Binding<String> {
+        Binding {
+            isPreset ? config.voiceId : Self.otherTag
+        } set: { id in
+            if let preset = VoiceConfig.presets.first(where: { $0.id == id }) {
+                customVoice = false
+                config.voiceId = preset.id
+                config.voiceName = preset.name
+            } else {
+                customVoice = true
+                config.voiceName = nil
+            }
+        }
+    }
+
     private var credits: Int {
         pending.reduce(0) { $0 + $1.count }
     }
@@ -110,6 +141,7 @@ struct VoiceSettingsSection: View {
             return
         }
         config = pasted
+        customVoice = false
         status = "Using \(pasted.voiceName ?? pasted.voiceId) with \(pasted.modelId)."
     }
 

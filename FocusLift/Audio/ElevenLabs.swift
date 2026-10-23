@@ -16,6 +16,25 @@ struct VoiceConfig: Codable, Equatable {
 
     static let models = ["eleven_v3", "eleven_multilingual_v2", "eleven_flash_v2_5", "eleven_turbo_v2_5"]
 
+    /// Voices for the picker in Settings. Ramona is a library voice (paid plan only);
+    /// the others are ElevenLabs' premade voices, which work on every plan and speak German with the multilingual models.
+    static let presets: [VoicePreset] = [
+        VoicePreset(id: "yUy9CCX9brt8aPVvIWy3", name: "Ramona", note: "German, calm · paid plan"),
+        VoicePreset(id: "cgSgspJ2msm6clMCkdW9", name: "Jessica", note: "bright, upbeat"),
+        VoicePreset(id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", note: "soft, confident"),
+        VoicePreset(id: "FGY2WhTYpPnrIDTdsKH5", name: "Laura", note: "energetic"),
+        VoicePreset(id: "Xb7hH8MSUJpSbSDYk0k2", name: "Alice", note: "clear, British"),
+        VoicePreset(id: "XrExE9yKIg1WjnnlVkGX", name: "Matilda", note: "warm"),
+        VoicePreset(id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", note: "calm, British"),
+        VoicePreset(id: "nPczCjzI2devNBz1zQrb", name: "Brian", note: "deep, calm"),
+        VoicePreset(id: "JBFqnCBsd6RJkjVDZRzb", name: "George", note: "warm, British"),
+        VoicePreset(id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", note: "steady, British"),
+        VoicePreset(id: "CwhRBWXzGAHq8TQ4Fs17", name: "Roger", note: "relaxed"),
+        VoicePreset(id: "iP95p4xoKVk53GoZ742B", name: "Chris", note: "casual"),
+        VoicePreset(id: "cjVigY5qzO86Huf0OWal", name: "Eric", note: "smooth"),
+        VoicePreset(id: "bIHbv24MWmeRgasZH58o", name: "Will", note: "friendly"),
+    ]
+
     private static let key = "elevenLabsConfig"
     static let enabledKey = "elevenLabsEnabled"
 
@@ -51,6 +70,12 @@ struct VoiceConfig: Codable, Equatable {
         copy.voiceName = nil
         return (try? encoder.encode(copy)).map { String(decoding: $0, as: UTF8.self) } ?? voiceId
     }
+}
+
+struct VoicePreset: Identifiable {
+    let id: String
+    let name: String
+    let note: String
 }
 
 enum Keychain {
