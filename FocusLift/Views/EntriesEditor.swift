@@ -159,6 +159,8 @@ private struct SetRow: View {
     @FocusState private var repsFocused: Bool
     /// The reps field edits text, so the +/− buttons can change the number while it's being typed.
     @State private var repsText = ""
+    /// Set when the reps field gets focus: the first key replaces the old number instead of adding to it.
+    @State private var replaceReps = false
 
     var body: some View {
         HStack(spacing: 6) {
@@ -200,14 +202,31 @@ private struct SetRow: View {
                 // Drawn above the rest column, which the buttons cover while editing.
                 .zIndex(1)
                 .onAppear { repsText = "\(set.reps)" }
-                .onChange(of: repsText) { _, text in
+                .onChange(of: repsText) { old, text in
+                    if replaceReps, text != old {
+                        replaceReps = false
+                        repsText = Self.typed(old: old, new: text)
+                        return
+                    }
                     if let reps = Int(text), reps != set.reps { set.reps = reps }
                 }
                 .onChange(of: set.reps) { _, reps in
-                    if Int(repsText) != reps { repsText = "\(reps)" }
+                    if Int(repsText) != reps {
+                        replaceReps = false
+                        repsText = "\(reps)"
+                    }
                 }
                 .onChange(of: repsFocused) { _, focused in
-                    if !focused { repsText = "\(set.reps)" }
+                    guard focused else {
+                        replaceReps = false
+                        repsText = "\(set.reps)"
+                        return
+                    }
+                    replaceReps = true
+                    // Also highlight the number. Delayed, so it comes after the tap places the cursor.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
+                    }
                 }
 
             Menu {
@@ -232,6 +251,16 @@ private struct SetRow: View {
             }
         }
         .listRowBackground(set.done ? Color.green.opacity(0.15) : (isCurrent ? Color.accentColor.opacity(0.18) : nil))
+    }
+
+    /// What was typed into `old` to get `new`, wherever the cursor was.
+    private static func typed(old: String, new: String) -> String {
+        // Not longer: the highlighted number was replaced (or deleted), so `new` is what was typed.
+        guard new.count > old.count else { return new }
+        let prefix = zip(old, new).prefix { $0 == $1 }.count
+        let maxSuffix = min(old.count, new.count) - prefix
+        let suffix = zip(old.reversed(), new.reversed()).prefix { $0 == $1 }.count
+        return String(new.dropFirst(prefix).dropLast(min(suffix, maxSuffix)))
     }
 
     /// + above, − below, to the right of the reps field. Only shown while the field is being edited.
