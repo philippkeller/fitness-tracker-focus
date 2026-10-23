@@ -14,7 +14,7 @@ struct SetInfo {
 
 /// Everything the app says, in German or English.
 ///
-/// Announcements are lists of short sentences ("Bulgarian Split Squat.", "Satz zwei von drei.", "siebzehn Komma fünf Kilo, zehn Wiederholungen.").
+/// Announcements are lists of short sentences ("Bulgarian Split Squat.", "Satz zwei von drei.", "Zehn Wiederholungen mit siebzehn Komma fünf Kilo.").
 /// Numbers are written out as words: with digits the voice guessed the language per sentence and sometimes said
 /// "twenty four" or made up numbers. Exercise names and notes are read as typed.
 /// The ElevenLabs voice caches each sentence on its own, so most announcements reuse audio that was already paid for.
@@ -52,17 +52,25 @@ struct Phrases {
         german ? "Satz \(spoken(number)) von \(spoken(count))." : "Set \(spoken(number)) of \(spoken(count))."
     }
 
+    /// "Zehn Wiederholungen mit siebzehn Komma fünf Kilo." A whole statement: the list form
+    /// "siebzehn Komma fünf Kilo, zehn Wiederholungen." made the voice go up at the end like a question.
     func load(weight: Double, reps: Int) -> String? {
-        var load: [String] = []
-        if weight > 0 {
-            load.append(german
-                ? (weight == 1 ? "ein Kilo" : "\(spoken(weight)) Kilo")
-                : (weight == 1 ? "one kilo" : "\(spoken(weight)) kilos"))
+        let kilos = german
+            ? (weight == 1 ? "einem Kilo" : "\(spoken(weight)) Kilo")
+            : (weight == 1 ? "one kilo" : "\(spoken(weight)) kilos")
+        let repsText = german ? counted(reps, "Wiederholung", "Wiederholungen", one: "eine") : counted(reps, "rep", "reps", one: "one")
+        switch (weight > 0, reps > 0) {
+        case (true, true): return capitalized(german ? "\(repsText) mit \(kilos)." : "\(repsText) at \(kilos).")
+        case (false, true): return capitalized(repsText + ".")
+        case (true, false):
+            let alone = german ? (weight == 1 ? "ein Kilo" : kilos) : kilos
+            return capitalized(alone + ".")
+        case (false, false): return nil
         }
-        if reps > 0 {
-            load.append(german ? counted(reps, "Wiederholung", "Wiederholungen", one: "eine") : counted(reps, "rep", "reps", one: "one"))
-        }
-        return load.isEmpty ? nil : load.joined(separator: ", ") + "."
+    }
+
+    private func capitalized(_ text: String) -> String {
+        text.prefix(1).uppercased() + text.dropFirst()
     }
 
     func rest(_ seconds: Int) -> String {

@@ -31,7 +31,7 @@ iOS sends AirPods presses only to the app that is currently playing audio. If Am
 - "Finish & update routine" saves today's weights, reps and exercise order to the routine.
 - Strong import: Strong → Settings → Export Strong Data. Then in FocusLift: Settings → Import Strong CSV. This imports history (used for Previous and records) and creates one routine per Strong workout name.
 - **App blocking**: Settings → Focus → choose apps (X, Instagram, …). While a workout runs they show a Screen Time block screen; they unlock when you finish or discard. Uses Apple's Family Controls (Screen Time) API, approved once with Face ID.
-- **ElevenLabs voice**: Settings → Voice. Paste your API key and optionally the settings from the Voice Lab (below). Each sentence ("Satz 2 von 3.", "17,5 Kilo, 10 Wiederholungen.") is generated once and saved on the phone, so repeated announcements cost no credits and work without signal. Tap *Prepare voice for routines* on Wi-Fi after changing a routine. If a sentence can't be generated, the iPhone voice reads the announcement.
+- **ElevenLabs voice**: Settings → Voice. Paste your API key and optionally the settings from the Voice Lab (below). Each sentence ("Satz 2 von 3.", "10 Wiederholungen mit 17,5 Kilo.") is generated once and saved on the phone, so repeated announcements cost no credits and work without signal. Tap *Prepare voice for routines* on Wi-Fi after changing a routine. If a sentence can't be generated, the iPhone voice reads the announcement.
 - **Music**: Artists → song, a random mix, or a playlist from your Navidrome server.
 - Data is stored in a single JSON file (Files app → On My iPhone → FocusLift). You can also export it from Settings.
 
