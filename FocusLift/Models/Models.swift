@@ -23,8 +23,6 @@ struct ExerciseEntry: Identifiable, Codable, Hashable {
     var exerciseID: UUID
     var sets: [WorkSet]
     var skipped = false
-    /// Note for this routine only, e.g. machine settings at another gym. nil = the exercise's own note.
-    var note: String?
 }
 
 struct Routine: Identifiable, Codable, Hashable {

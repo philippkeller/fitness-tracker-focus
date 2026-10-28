@@ -313,7 +313,7 @@ final class WorkoutEngine {
               let set = entry.sets[safe: position.set] else { return nil }
         let exercise = store.exercise(entry.exerciseID)
         return SetInfo(
-            exercise: exercise?.name ?? "Exercise", note: store.note(for: entry),
+            exercise: exercise?.name ?? "Exercise", note: exercise?.note ?? "",
             number: position.set + 1, count: entry.sets.count, weight: set.weight, reps: set.reps)
     }
 

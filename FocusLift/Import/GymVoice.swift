@@ -11,7 +11,7 @@ enum GymVoice {
     struct Suggestion: Identifiable {
         let id = UUID()
         var name: String
-        /// Same exercise as one you already have: reuse it (history and last weights carry over).
+        /// Same exercise as one you already have: the routine gets a copy with its last sets and weights.
         var existingID: UUID?
         /// New exercise: copy number of sets and reps from this one, weights start at 0.
         var similarID: UUID?

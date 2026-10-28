@@ -43,7 +43,7 @@ private struct EntrySection: View {
 
     var body: some View {
         Section {
-            NoteField(text: store.noteBinding(for: $entry))
+            NoteField(text: store.noteBinding(for: entry.exerciseID))
             SetHeaderRow(showCheck: mode == .workout)
             ForEach($entry.sets) { $set in
                 let index = entry.sets.firstIndex { $0.id == set.id } ?? 0

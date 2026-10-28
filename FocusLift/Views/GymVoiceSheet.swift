@@ -128,7 +128,7 @@ struct GymVoiceSheet: View {
                         suggestionRow($suggestion)
                     }
                 } footer: {
-                    Text("Tap to leave one out. Weights of new exercises start at 0. Notes start empty, so the old gym's machine settings aren't read out.")
+                    Text("Tap to leave one out. Every exercise here becomes a separate copy, so changing it never changes your other routines. Notes start empty. New exercises start at 0 kg.")
                 }
             }
             Section {
@@ -162,7 +162,7 @@ struct GymVoiceSheet: View {
 
     private func detail(for suggestion: GymVoice.Suggestion) -> String {
         if let id = suggestion.existingID {
-            return "your exercise · \(setsText(store.defaultSets(for: id)))"
+            return "copy of your exercise · \(setsText(store.defaultSets(for: id)))"
         }
         if let id = suggestion.similarID {
             return "new · sets like \(store.exerciseName(id))"
@@ -202,29 +202,25 @@ struct GymVoiceSheet: View {
         }
     }
 
+    /// Every exercise in the new routine is a new exercise of its own, so changing it here never
+    /// changes the exercises of your other routines. The note starts empty: the old gym's machine
+    /// settings don't fit the new machines.
     private func create() {
-        // Every entry gets its own empty note: the old gym's machine settings don't fit here,
-        // and settings typed for this gym stay in this routine.
         var entries: [ExerciseEntry] = []
         for suggestion in suggestions where suggestion.isIncluded {
-            if let id = suggestion.existingID {
-                entries.append(ExerciseEntry(exerciseID: id, sets: store.defaultSets(for: id), note: ""))
-                continue
-            }
-            let exerciseID: UUID
-            if let same = store.exercises.first(where: { $0.name.caseInsensitiveCompare(suggestion.name) == .orderedSame }) {
-                exerciseID = same.id
-            } else {
-                let exercise = Exercise(name: suggestion.name)
-                store.exercises.append(exercise)
-                exerciseID = exercise.id
-            }
-            var sets = store.defaultSets(for: exerciseID)
-            if let similar = suggestion.similarID, store.previousSets(for: exerciseID).isEmpty {
+            let exercise = Exercise(name: suggestion.name)
+            store.exercises.append(exercise)
+            let sets: [WorkSet]
+            if let original = suggestion.existingID {
+                // Copy of your exercise: same sets, reps, weights and rest as last time.
+                sets = store.defaultSets(for: original)
+            } else if let similar = suggestion.similarID {
                 // Same number of sets, reps and rest as the similar exercise; the weight is unknown on a new machine.
                 sets = store.defaultSets(for: similar).map { WorkSet(weight: 0, reps: $0.reps, rest: $0.rest) }
+            } else {
+                sets = store.defaultSets(for: exercise.id)
             }
-            entries.append(ExerciseEntry(exerciseID: exerciseID, sets: sets, note: ""))
+            entries.append(ExerciseEntry(exerciseID: exercise.id, sets: sets))
         }
         let name = routineName.trimmingCharacters(in: .whitespacesAndNewlines)
         let routine = Routine(name: name.isEmpty ? "New gym" : name, entries: entries)
