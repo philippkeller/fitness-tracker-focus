@@ -24,11 +24,14 @@ extension AppStore {
             })
     }
 
-    func noteBinding(for exerciseID: UUID) -> Binding<String> {
+    /// Edits the routine's own note if the entry has one, else the exercise's note.
+    func noteBinding(for entry: Binding<ExerciseEntry>) -> Binding<String> {
         Binding(
-            get: { self.exercise(exerciseID)?.note ?? "" },
+            get: { self.note(for: entry.wrappedValue) },
             set: { value in
-                if let index = self.exercises.firstIndex(where: { $0.id == exerciseID }) {
+                if entry.wrappedValue.note != nil {
+                    entry.wrappedValue.note = value
+                } else if let index = self.exercises.firstIndex(where: { $0.id == entry.wrappedValue.exerciseID }) {
                     self.exercises[index].note = value
                 }
             })

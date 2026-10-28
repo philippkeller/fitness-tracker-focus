@@ -112,6 +112,11 @@ final class AppStore {
         exercise(id)?.name ?? "Unknown exercise"
     }
 
+    /// The note read before the first set: the routine's own note if it has one, else the exercise's.
+    func note(for entry: ExerciseEntry) -> String {
+        entry.note ?? exercise(entry.exerciseID)?.note ?? ""
+    }
+
     /// Completed sets from the most recent finished workout (started before `date`) that contains the exercise.
     func previousSets(for exerciseID: UUID, before date: Date = .distantFuture) -> [WorkSet] {
         for workout in history where workout.startedAt < date {
@@ -215,7 +220,8 @@ final class AppStore {
             let sets = entry.sets.isEmpty ? [WorkSet(weight: 0, reps: 0, rest: 0)] : entry.sets
             return ExerciseEntry(
                 exerciseID: entry.exerciseID,
-                sets: sets.map { WorkSet(weight: $0.weight, reps: $0.reps, rest: $0.rest) })
+                sets: sets.map { WorkSet(weight: $0.weight, reps: $0.reps, rest: $0.rest) },
+                note: entry.note)
         }
         activeWorkout = Workout(routineID: routine?.id, name: routine?.name ?? "Workout", startedAt: Date(), entries: entries)
     }
@@ -231,7 +237,8 @@ final class AppStore {
             routines[index].entries = active.entries.map { entry in
                 ExerciseEntry(
                     exerciseID: entry.exerciseID,
-                    sets: entry.sets.map { WorkSet(weight: $0.weight, reps: $0.reps, rest: $0.rest) })
+                    sets: entry.sets.map { WorkSet(weight: $0.weight, reps: $0.reps, rest: $0.rest) },
+                    note: entry.note)
             }
         }
 

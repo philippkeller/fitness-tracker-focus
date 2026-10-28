@@ -101,7 +101,7 @@ struct Phrases {
         for entry in entries {
             let exercise = store.exercise(entry.exerciseID)
             result.append(sentence(exercise?.name ?? "Exercise"))
-            result += note(exercise?.note ?? "")
+            result += note(store.note(for: entry))
             for (index, set) in entry.sets.enumerated() {
                 if !(set.weight == 0 && set.reps == 0 && entry.sets.count == 1) {
                     result.append(setNumber(index + 1, of: entry.sets.count))

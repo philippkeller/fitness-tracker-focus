@@ -128,7 +128,7 @@ struct GymVoiceSheet: View {
                         suggestionRow($suggestion)
                     }
                 } footer: {
-                    Text("Tap to leave one out. Weights of new exercises start at 0, set them at the machine.")
+                    Text("Tap to leave one out. Weights of new exercises start at 0. Notes start empty, so the old gym's machine settings aren't read out.")
                 }
             }
             Section {
@@ -203,10 +203,12 @@ struct GymVoiceSheet: View {
     }
 
     private func create() {
+        // Every entry gets its own empty note: the old gym's machine settings don't fit here,
+        // and settings typed for this gym stay in this routine.
         var entries: [ExerciseEntry] = []
         for suggestion in suggestions where suggestion.isIncluded {
             if let id = suggestion.existingID {
-                entries.append(ExerciseEntry(exerciseID: id, sets: store.defaultSets(for: id)))
+                entries.append(ExerciseEntry(exerciseID: id, sets: store.defaultSets(for: id), note: ""))
                 continue
             }
             let exerciseID: UUID
@@ -222,7 +224,7 @@ struct GymVoiceSheet: View {
                 // Same number of sets, reps and rest as the similar exercise; the weight is unknown on a new machine.
                 sets = store.defaultSets(for: similar).map { WorkSet(weight: 0, reps: $0.reps, rest: $0.rest) }
             }
-            entries.append(ExerciseEntry(exerciseID: exerciseID, sets: sets))
+            entries.append(ExerciseEntry(exerciseID: exerciseID, sets: sets, note: ""))
         }
         let name = routineName.trimmingCharacters(in: .whitespacesAndNewlines)
         let routine = Routine(name: name.isEmpty ? "New gym" : name, entries: entries)
