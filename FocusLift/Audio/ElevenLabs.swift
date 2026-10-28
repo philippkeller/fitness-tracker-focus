@@ -91,7 +91,12 @@ enum Keychain {
     static var openAIKey: String? {
         get {
             if let key = read("openAIAPIKey"), !key.isEmpty { return key }
-            return BuildSecrets.openAIKey.isEmpty ? nil : BuildSecrets.openAIKey
+            // Written into the app by the "Read .env" build step.
+            guard let url = Bundle.main.url(forResource: "openai-key", withExtension: "txt"),
+                  let key = try? String(contentsOf: url, encoding: .utf8)
+                    .trimmingCharacters(in: .whitespacesAndNewlines),
+                  !key.isEmpty else { return nil }
+            return key
         }
         set { write(newValue, for: "openAIAPIKey") }
     }

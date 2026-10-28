@@ -52,10 +52,10 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F0000000000000000000000A /* Build configuration list for PBXNativeTarget "FocusLift" */;
 			buildPhases = (
-				F00000000000000000000010 /* Read .env */,
 				F00000000000000000000007 /* Sources */,
 				F00000000000000000000003 /* Frameworks */,
 				F00000000000000000000008 /* Resources */,
+				F00000000000000000000010 /* Read .env */,
 			);
 			buildRules = (
 			);
@@ -130,11 +130,11 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/BuildSecrets.swift",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/openai-key.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "ENV_FILE=\"$SRCROOT/.env\"\nKEY=\"\"\nif [ -f \"$ENV_FILE\" ]; then\n  KEY=$(grep -E '^OPENAI_API_KEY=' \"$ENV_FILE\" | tail -n 1 | cut -d= -f2- | tr -cd 'A-Za-z0-9_-')\nfi\nmkdir -p \"$DERIVED_FILE_DIR\"\nprintf '// Generated from .env at build time. Not in git.\\nenum BuildSecrets {\\n    static let openAIKey = \"%s\"\\n}\\n' \"$KEY\" > \"$DERIVED_FILE_DIR/BuildSecrets.swift\"\n";
+			shellScript = "ENV_FILE=\"$SRCROOT/.env\"\nOUT=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/openai-key.txt\"\nKEY=\"\"\nif [ -f \"$ENV_FILE\" ]; then\n  KEY=$(grep -E '^OPENAI_API_KEY=' \"$ENV_FILE\" | tail -n 1 | cut -d= -f2- | tr -cd 'A-Za-z0-9_-')\nfi\nmkdir -p \"$(dirname \"$OUT\")\"\nprintf '%s' \"$KEY\" > \"$OUT\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
