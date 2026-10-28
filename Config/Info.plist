@@ -13,6 +13,8 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Streams music from your Navidrome/Subsonic server on the local network.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Records what you say about a new gym's machines, to build a routine from your exercises.</string>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>
 	<key>UIFileSharingEnabled</key>

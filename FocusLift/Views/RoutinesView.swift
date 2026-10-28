@@ -6,6 +6,7 @@ struct RoutinesView: View {
     @Binding var showWorkout: Bool
     @State private var path: [UUID] = []
     @State private var confirmCancel = false
+    @State private var showGymVoice = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -77,6 +78,15 @@ struct RoutinesView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { EditButton() }
                 ToolbarItem(placement: .primaryAction) {
+                    // Recording takes over the audio, so not while a workout plays music.
+                    Button {
+                        showGymVoice = true
+                    } label: {
+                        Image(systemName: "mic")
+                    }
+                    .disabled(store.activeWorkout != nil)
+                }
+                ToolbarItem(placement: .primaryAction) {
                     Button {
                         let routine = Routine(name: "New routine")
                         store.routines.append(routine)
@@ -85,6 +95,9 @@ struct RoutinesView: View {
                         Image(systemName: "plus")
                     }
                 }
+            }
+            .sheet(isPresented: $showGymVoice) {
+                GymVoiceSheet { path.append($0) }
             }
             .navigationDestination(for: UUID.self) { id in
                 RoutineEditorView(routineID: id, showWorkout: $showWorkout)

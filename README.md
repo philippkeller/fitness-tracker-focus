@@ -32,6 +32,7 @@ iOS sends AirPods presses only to the app that is currently playing audio. If Am
 - Strong import: Strong → Settings → Export Strong Data. Then in FocusLift: Settings → Import Strong CSV. This imports history (used for Previous and records) and creates one routine per Strong workout name.
 - **App blocking**: Settings → Focus → choose apps (X, Instagram, …). While a workout runs they show a Screen Time block screen; they unlock when you finish or discard. Uses Apple's Family Controls (Screen Time) API, approved once with Face ID.
 - **ElevenLabs voice**: Settings → Voice. Paste your API key and optionally the settings from the Voice Lab (below). Each sentence ("Satz 2 von 3.", "10 Wiederholungen mit 17,5 Kilo.") is generated once and saved on the phone, so repeated announcements cost no credits and work without signal. Tap *Prepare voice for routines* on Wi-Fi after changing a routine. If a sentence can't be generated, the iPhone voice reads the announcement.
+- **New gym by voice**: the mic button on the Train screen. Say which machines the gym has (German is fine), e.g. “Beinpresse, Latzug, Leg Curl sitzend”. OpenAI transcribes it (`gpt-4o-transcribe`) and matches the machines against your exercises (`gpt-5.4-mini`). Known exercises keep their history and last weights; new ones copy sets and reps from the most similar exercise, starting at 0 kg. You confirm the list, then a routine is created. Needs an OpenAI API key in Settings → Voice input (stored in the Keychain; locally in the gitignored `.env`, never in git).
 - **Music**: Artists → song, a random mix, or a playlist from your Navidrome server.
 - Data is stored in a single JSON file (Files app → On My iPhone → FocusLift). You can also export it from Settings.
 
@@ -54,6 +55,7 @@ Without ElevenLabs: download an *Enhanced* or *Premium* German voice in iOS Sett
 - `Audio/AudioController.swift`: audio session, silent loop, AirPods remote commands, lock screen info
 - `Audio/Phrases.swift`: everything the voice says (DE/EN)
 - `Audio/ElevenLabs.swift`: voice settings, API key in the Keychain, per-sentence audio cache
+- `Import/GymVoice.swift`: voice input for a new gym (recording, OpenAI transcription and matching); `Views/GymVoiceSheet.swift` is the screen
 - `Music/`: Subsonic client and in-app music player
 - `Store/AppStore.swift`: data, persistence, "previous" lookups, records
 - `Import/StrongImporter.swift`: Strong CSV import

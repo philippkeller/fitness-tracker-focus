@@ -12,6 +12,7 @@ struct SettingsView: View {
     @AppStorage("strongCreateRoutines") private var createRoutines = true
     @AppStorage(AppBlocker.enabledKey) private var blockApps = true
     @State private var showAppPicker = false
+    @State private var openAIKey = ""
 
     @State private var connectionResult: String?
     @State private var importing = false
@@ -21,6 +22,16 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 VoiceSettingsSection()
+
+                Section {
+                    SecureField("OpenAI API key (sk-…)", text: $openAIKey)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("Voice input")
+                } footer: {
+                    Text("For the mic button on the Train screen: say which machines a new gym has, and a routine is built from your exercises. The key stays on this iPhone.")
+                }
 
                 Section {
                 } header: {
@@ -97,7 +108,13 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .onAppear { blocker.refreshAuthorization() }
+            .onAppear {
+                blocker.refreshAuthorization()
+                openAIKey = Keychain.openAIKey ?? ""
+            }
+            .onChange(of: openAIKey) { _, value in
+                Keychain.openAIKey = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
             .familyActivityPicker(
                 isPresented: $showAppPicker,
                 selection: Binding(get: { blocker.selection }, set: { blocker.setSelection($0) }))

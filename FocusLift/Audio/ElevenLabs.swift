@@ -86,6 +86,12 @@ enum Keychain {
         set { write(newValue, for: "elevenLabsAPIKey") }
     }
 
+    /// For voice input (Whisper transcription + matching), see GymVoice.
+    static var openAIKey: String? {
+        get { read("openAIAPIKey") }
+        set { write(newValue, for: "openAIAPIKey") }
+    }
+
     private static func read(_ account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
