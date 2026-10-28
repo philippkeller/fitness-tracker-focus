@@ -52,6 +52,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F0000000000000000000000A /* Build configuration list for PBXNativeTarget "FocusLift" */;
 			buildPhases = (
+				F00000000000000000000010 /* Read .env */,
 				F00000000000000000000007 /* Sources */,
 				F00000000000000000000003 /* Frameworks */,
 				F00000000000000000000008 /* Resources */,
@@ -114,6 +115,29 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		F00000000000000000000010 /* Read .env */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Read .env";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/BuildSecrets.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "ENV_FILE=\"$SRCROOT/.env\"\nKEY=\"\"\nif [ -f \"$ENV_FILE\" ]; then\n  KEY=$(grep -E '^OPENAI_API_KEY=' \"$ENV_FILE\" | tail -n 1 | cut -d= -f2- | tr -cd 'A-Za-z0-9_-')\nfi\nmkdir -p \"$DERIVED_FILE_DIR\"\nprintf '// Generated from .env at build time. Not in git.\\nenum BuildSecrets {\\n    static let openAIKey = \"%s\"\\n}\\n' \"$KEY\" > \"$DERIVED_FILE_DIR/BuildSecrets.swift\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		F00000000000000000000007 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -135,7 +159,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -162,7 +186,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;

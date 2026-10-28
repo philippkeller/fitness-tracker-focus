@@ -30,7 +30,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Voice input")
                 } footer: {
-                    Text("For the mic button on the Train screen: say which machines a new gym has, and a routine is built from your exercises. The key stays on this iPhone.")
+                    Text("For the mic button on the Train screen: say which machines a new gym has, and a routine is built from your exercises. The key stays on this iPhone. If .env had OPENAI_API_KEY when the app was built, it's already filled in.")
                 }
 
                 Section {
@@ -113,7 +113,9 @@ struct SettingsView: View {
                 openAIKey = Keychain.openAIKey ?? ""
             }
             .onChange(of: openAIKey) { _, value in
-                Keychain.openAIKey = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                let key = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                // Don't copy the key from .env into the Keychain just by showing it.
+                if key != Keychain.openAIKey ?? "" { Keychain.openAIKey = key }
             }
             .familyActivityPicker(
                 isPresented: $showAppPicker,

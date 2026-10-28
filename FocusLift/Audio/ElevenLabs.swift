@@ -87,8 +87,12 @@ enum Keychain {
     }
 
     /// For voice input (Whisper transcription + matching), see GymVoice.
+    /// Typed in Settings, or else taken from OPENAI_API_KEY in .env when the app was built.
     static var openAIKey: String? {
-        get { read("openAIAPIKey") }
+        get {
+            if let key = read("openAIAPIKey"), !key.isEmpty { return key }
+            return BuildSecrets.openAIKey.isEmpty ? nil : BuildSecrets.openAIKey
+        }
         set { write(newValue, for: "openAIAPIKey") }
     }
 
