@@ -162,7 +162,31 @@ final class WorkoutEngine {
     }
 
     func completeCurrentSet() {
-        guard phase != .idle, let position = currentPosition, var workout = store.activeWorkout else { return }
+        guard let position = currentPosition else { return }
+        complete(position)
+    }
+
+    /// Check mark on a set that isn't the current one, e.g. an exercise done out of order because the machine
+    /// was taken. Its exercise moves up to the current spot, so the rest timer starts and its next sets follow.
+    /// Returns false if there's no running workout.
+    @discardableResult
+    func completeSet(id: UUID) -> Bool {
+        guard phase != .idle, var workout = store.activeWorkout,
+              var entryIndex = workout.entries.firstIndex(where: { entry in entry.sets.contains { $0.id == id } }) else { return false }
+        if let current = currentPosition, entryIndex > current.entry {
+            let entry = workout.entries.remove(at: entryIndex)
+            workout.entries.insert(entry, at: current.entry)
+            entryIndex = current.entry
+        }
+        workout.entries[entryIndex].skipped = false
+        guard let setIndex = workout.entries[entryIndex].sets.firstIndex(where: { $0.id == id }) else { return false }
+        store.activeWorkout = workout
+        complete(SetPosition(entry: entryIndex, set: setIndex))
+        return true
+    }
+
+    private func complete(_ position: SetPosition) {
+        guard phase != .idle, var workout = store.activeWorkout else { return }
         workout.entries[position.entry].sets[position.set].done = true
         workout.entries[position.entry].sets[position.set].completedAt = Date()
         store.activeWorkout = workout

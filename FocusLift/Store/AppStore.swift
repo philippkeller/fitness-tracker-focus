@@ -211,11 +211,15 @@ final class AppStore {
     func startWorkout(from routine: Routine?) {
         let entries = (routine?.entries ?? []).map { entry in
             // An exercise without sets (e.g. a warm-up) becomes one set without weight and reps:
-            // the voice announces it and waits for a press.
-            let sets = entry.sets.isEmpty ? [WorkSet(weight: 0, reps: 0, rest: 0)] : entry.sets
+            // the voice announces it and waits for a press. Then a normal rest before the first exercise.
+            // Older routines saved the warm-up with no rest, so those get the rest too.
+            let sets = entry.sets.isEmpty ? [WorkSet(weight: 0, reps: 0, rest: 90)] : entry.sets
             return ExerciseEntry(
                 exerciseID: entry.exerciseID,
-                sets: sets.map { WorkSet(weight: $0.weight, reps: $0.reps, rest: $0.rest) })
+                sets: sets.map { set in
+                    let untracked = set.weight == 0 && set.reps == 0
+                    return WorkSet(weight: set.weight, reps: set.reps, rest: untracked && set.rest == 0 ? 90 : set.rest)
+                })
         }
         activeWorkout = Workout(routineID: routine?.id, name: routine?.name ?? "Workout", startedAt: Date(), entries: entries)
     }

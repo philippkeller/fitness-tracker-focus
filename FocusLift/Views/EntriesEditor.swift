@@ -106,12 +106,9 @@ private struct EntrySection: View {
     }
 
     private func check(_ setID: UUID) {
-        if setID == currentSetID {
-            // Same as an AirPods press: logs the set and starts the rest timer.
-            engine.completeCurrentSet()
-            return
-        }
         guard let index = entry.sets.firstIndex(where: { $0.id == setID }) else { return }
+        // Same as an AirPods press: logs the set and starts the rest timer, also for a set out of order.
+        if !entry.sets[index].done, engine.completeSet(id: setID) { return }
         entry.sets[index].done.toggle()
         entry.sets[index].completedAt = entry.sets[index].done ? Date() : nil
     }
@@ -157,6 +154,7 @@ private struct SetRow: View {
 
     @FocusState private var weightFocused: Bool
     @FocusState private var repsFocused: Bool
+    @State private var weightText = ""
     /// The reps field edits text, so the +/− buttons can change the number while it's being typed.
     @State private var repsText = ""
     /// Set when the reps field gets focus: the first key replaces the old number instead of adding to it.
@@ -176,15 +174,26 @@ private struct SetRow: View {
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity)
 
-            TextField("kg", value: $set.weight, format: .number)
+            // Edits text and saves every key: a number-format field only saves on Return, which the keypad lacks.
+            TextField("kg", text: $weightText)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.center)
                 .frame(width: 58, height: 30)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
                 .focused($weightFocused)
+                .onAppear { weightText = Fmt.number(set.weight) }
+                .onChange(of: weightText) { _, text in
+                    if let weight = Self.weight(text), weight != set.weight { set.weight = weight }
+                }
+                .onChange(of: set.weight) { _, weight in
+                    if Self.weight(weightText) != weight { weightText = Fmt.number(weight) }
+                }
                 .onChange(of: weightFocused) { _, focused in
+                    guard focused else {
+                        weightText = Fmt.number(set.weight)
+                        return
+                    }
                     // Select the whole number, so typing replaces it.
-                    guard focused else { return }
                     DispatchQueue.main.async {
                         UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
                     }
@@ -203,10 +212,13 @@ private struct SetRow: View {
                 .zIndex(1)
                 .onAppear { repsText = "\(set.reps)" }
                 .onChange(of: repsText) { old, text in
+                    var text = text
                     if replaceReps, text != old {
                         replaceReps = false
-                        repsText = Self.typed(old: old, new: text)
-                        return
+                        text = Self.typed(old: old, new: text)
+                        // Often the same text (the number was highlighted), and then no new onChange
+                        // comes to save it, so it's saved below.
+                        repsText = text
                     }
                     if let reps = Int(text), reps != set.reps { set.reps = reps }
                 }
@@ -251,6 +263,13 @@ private struct SetRow: View {
             }
         }
         .listRowBackground(set.done ? Color.green.opacity(0.15) : (isCurrent ? Color.accentColor.opacity(0.18) : nil))
+    }
+
+    /// "17,5" or "17.5" → 17.5. Nil while empty or not a number yet.
+    private static func weight(_ text: String) -> Double? {
+        let cleaned = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+        guard let weight = Double(cleaned), weight >= 0 else { return nil }
+        return weight
     }
 
     /// What was typed into `old` to get `new`, wherever the cursor was.
