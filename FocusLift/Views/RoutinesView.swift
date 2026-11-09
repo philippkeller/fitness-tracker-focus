@@ -25,7 +25,7 @@ struct RoutinesView: View {
 
                 Section("Routines") {
                     let upNext = upNextRoutineID
-                    ForEach(store.routines) { routine in
+                    ForEach(activeRoutines) { routine in
                         NavigationLink(value: routine.id) {
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
@@ -49,9 +49,32 @@ struct RoutinesView: View {
                                     .lineLimit(2)
                             }
                         }
+                        .swipeActions {
+                            Button("Delete", role: .destructive) { store.routines.removeAll { $0.id == routine.id } }
+                            Button("Archive") { setArchived(routine.id, true) }
+                                .tint(.orange)
+                        }
                     }
-                    .onDelete { store.routines.remove(atOffsets: $0) }
-                    .onMove { store.routines.move(fromOffsets: $0, toOffset: $1) }
+                    .onDelete { deleteRoutines(at: $0, in: activeRoutines) }
+                    .onMove { moveRoutines(from: $0, to: $1) }
+                }
+
+                let archived = store.routines.filter(\.archived)
+                if !archived.isEmpty {
+                    Section {
+                        DisclosureGroup("Archived (\(archived.count))") {
+                            ForEach(archived) { routine in
+                                NavigationLink(routine.name, value: routine.id)
+                                    .foregroundStyle(.secondary)
+                                    .swipeActions {
+                                        Button("Delete", role: .destructive) { store.routines.removeAll { $0.id == routine.id } }
+                                        Button("Unarchive") { setArchived(routine.id, false) }
+                                            .tint(.green)
+                                    }
+                            }
+                            .onDelete { deleteRoutines(at: $0, in: archived) }
+                        }
+                    }
                 }
 
                 Section {
@@ -105,10 +128,32 @@ struct RoutinesView: View {
         }
     }
 
-    /// The routine done longest ago (never done counts as oldest), when there are at least two.
+    private var activeRoutines: [Routine] { store.routines.filter { !$0.archived } }
+
+    private func setArchived(_ id: UUID, _ archived: Bool) {
+        if let index = store.routines.firstIndex(where: { $0.id == id }) {
+            store.routines[index].archived = archived
+        }
+    }
+
+    /// `offsets` index into `shown`, a filtered view of `store.routines`.
+    private func deleteRoutines(at offsets: IndexSet, in shown: [Routine]) {
+        let ids = Set(offsets.map { shown[$0].id })
+        store.routines.removeAll { ids.contains($0.id) }
+    }
+
+    /// Reorders the active routines; archived ones keep their place at the end.
+    private func moveRoutines(from offsets: IndexSet, to destination: Int) {
+        var active = activeRoutines
+        active.move(fromOffsets: offsets, toOffset: destination)
+        store.routines = active + store.routines.filter(\.archived)
+    }
+
+    /// The active routine done longest ago (never done counts as oldest), when there are at least two.
     private var upNextRoutineID: UUID? {
-        guard store.routines.count > 1 else { return nil }
-        return store.routines.min { (store.lastDone($0) ?? .distantPast) < (store.lastDone($1) ?? .distantPast) }?.id
+        let routines = activeRoutines
+        guard routines.count > 1 else { return nil }
+        return routines.min { (store.lastDone($0) ?? .distantPast) < (store.lastDone($1) ?? .distantPast) }?.id
     }
 
     /// "Today", "Yesterday", "3 days ago · Tue", or "Never".

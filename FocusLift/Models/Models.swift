@@ -29,6 +29,19 @@ struct Routine: Identifiable, Codable, Hashable {
     var id = UUID()
     var name: String
     var entries: [ExerciseEntry] = []
+    /// Archived routines are listed apart and never "Up next".
+    var archived = false
+}
+
+// Custom decoding so routines saved before `archived` existed still load.
+extension Routine {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        entries = try c.decode([ExerciseEntry].self, forKey: .entries)
+        archived = try c.decodeIfPresent(Bool.self, forKey: .archived) ?? false
+    }
 }
 
 struct Workout: Identifiable, Codable, Hashable {
