@@ -152,10 +152,13 @@ final class AppStore {
     // MARK: Records
 
     /// Best values across all finished workouts started before `date`, or nil if never done.
+    /// Matches by name: "New gym by voice" makes copies with new IDs, and their records still count.
     func bests(for exerciseID: UUID, before date: Date) -> Bests? {
+        let name = exerciseName(exerciseID)
+        let ids = Set(exercises.filter { $0.name.caseInsensitiveCompare(name) == .orderedSame }.map(\.id) + [exerciseID])
         var result: Bests?
         for workout in history where workout.startedAt < date {
-            for entry in workout.entries where entry.exerciseID == exerciseID {
+            for entry in workout.entries where ids.contains(entry.exerciseID) {
                 for set in entry.sets where set.done && set.reps > 0 {
                     if result == nil { result = Bests() }
                     result?.add(set)
