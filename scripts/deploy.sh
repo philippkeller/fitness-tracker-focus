@@ -27,6 +27,21 @@ LIVE="$CACHE/live.log"
 exec > >(awk -v p="[$APP] " '{ print p $0; fflush() }' | tee -a "$LIVE") 2>&1
 echo "==> $(date '+%H:%M:%S') Deploy started: $(git log -1 --format=%s)"
 
+# One build at a time per app: a push build and a hand-started one share the build folder,
+# and the second fails with "unable to attach DB". mkdir is atomic, macOS has no flock.
+LOCK="$BUILD_ROOT/deploy.lock"
+until mkdir "$LOCK" 2>/dev/null; do
+    owner="$(cat "$LOCK/pid" 2>/dev/null || true)"
+    if [ -n "$owner" ] && ! kill -0 "$owner" 2>/dev/null; then
+        rm -rf "$LOCK"   # left behind by a build that was killed
+        continue
+    fi
+    [ -z "${waiting:-}" ] && echo "==> Another build is running (pid ${owner:-?}), waiting…" && waiting=1
+    sleep 5
+done
+echo $$ > "$LOCK/pid"
+trap 'rm -rf "$LOCK"' EXIT
+
 SETTINGS=()
 if [ -n "${DEVELOPMENT_TEAM:-}" ]; then
     SETTINGS+=("DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM")
