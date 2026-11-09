@@ -151,21 +151,15 @@ final class AppStore {
 
     // MARK: Records
 
-    /// Best values across all finished workouts started before `date`, or nil if never done.
+    /// Done sets across all finished workouts started before `date`.
     /// Matches by name: "New gym by voice" makes copies with new IDs, and their records still count.
-    func bests(for exerciseID: UUID, before date: Date) -> Bests? {
+    func previousSets(for exerciseID: UUID, before date: Date) -> [WorkSet] {
         let name = exerciseName(exerciseID)
         let ids = Set(exercises.filter { $0.name.caseInsensitiveCompare(name) == .orderedSame }.map(\.id) + [exerciseID])
-        var result: Bests?
-        for workout in history where workout.startedAt < date {
-            for entry in workout.entries where ids.contains(entry.exerciseID) {
-                for set in entry.sets where set.done && set.reps > 0 {
-                    if result == nil { result = Bests() }
-                    result?.add(set)
-                }
-            }
-        }
-        return result
+        return history
+            .filter { $0.startedAt < date }
+            .flatMap { $0.entries.filter { ids.contains($0.exerciseID) }.flatMap(\.sets) }
+            .filter { $0.done && $0.reps > 0 }
     }
 
     /// New records set in `workout` compared to everything before it. First-time exercises don't count.
@@ -178,7 +172,10 @@ final class AppStore {
                 .filter { $0.exerciseID == entry.exerciseID }
                 .flatMap(\.sets)
             let sets = allSets.filter { $0.done && $0.reps > 0 }
-            guard !sets.isEmpty, let old = bests(for: entry.exerciseID, before: workout.startedAt) else { continue }
+            let previous = previousSets(for: entry.exerciseID, before: workout.startedAt)
+            guard !sets.isEmpty, !previous.isEmpty else { continue }
+            var old = Bests()
+            previous.forEach { old.add($0) }
             var today = Bests()
             sets.forEach { today.add($0) }
             let name = exerciseName(entry.exerciseID)
@@ -193,11 +190,17 @@ final class AppStore {
                     gain: "+" + Fmt.kg(today.weight - old.weight),
                     detail: detail(sets.first { $0.weight == today.weight })))
             }
-            if today.reps > old.reps {
+            // More reps than ever at this weight or heavier. The heaviest such set wins.
+            // Weights never lifted before are already a weight record.
+            let repHits = sets.compactMap { set -> (set: WorkSet, before: Int)? in
+                let before = previous.filter { $0.weight >= set.weight }.map(\.reps).max() ?? 0
+                return before > 0 && set.reps > before ? (set, before) : nil
+            }
+            if let best = repHits.max(by: { ($0.set.weight, $0.set.reps) < ($1.set.weight, $1.set.reps) }) {
                 hits.append(RecordHit(
-                    exercise: name, kind: .reps, value: "\(today.reps) reps", previous: "\(old.reps) reps",
-                    gain: "+\(today.reps - old.reps) reps",
-                    detail: detail(sets.first { $0.reps == today.reps })))
+                    exercise: name, kind: .reps, value: "\(best.set.reps) reps", previous: "\(best.before) reps",
+                    gain: "+\(best.set.reps - best.before) reps",
+                    detail: detail(best.set)))
             }
             if today.volume > old.volume, let set = today.volumeSet {
                 hits.append(RecordHit(

@@ -89,7 +89,7 @@ enum RecordKind {
     var title: String {
         switch self {
         case .weight: "Heaviest weight"
-        case .reps: "Most reps"
+        case .reps: "Most reps at this weight"
         case .volume: "Best set (kg × reps)"
         }
     }
