@@ -78,6 +78,18 @@ struct WorkoutSummaryView: View {
                 if records.isEmpty {
                     LabeledContent("Records", value: "None this time")
                 }
+                DisclosureGroup("How records work") {
+                    Text("""
+                        Like Hevy, each exercise is compared with all your earlier workouts:
+                        • Heaviest weight
+                        • Best 1-rep max: estimated from weight × reps (Epley formula), so more reps at the same weight count too
+                        • Best set: kg × reps of one set
+                        • Best workout: kg × reps of all sets added up
+                        Bodyweight exercises only count most reps in one set. The first time you do an exercise sets no record.
+                        """)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             ForEach(workout.entries) { entry in

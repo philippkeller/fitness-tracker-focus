@@ -177,6 +177,7 @@ struct RoutineEditorView: View {
     @Binding var showWorkout: Bool
     @State private var showPicker = false
     @State private var showReorder = false
+    @State private var historyFor: HistorySheetItem?
 
     var body: some View {
         if let routine = store.routineBinding(routineID) {
@@ -186,7 +187,7 @@ struct RoutineEditorView: View {
                         .font(.title3.bold())
                 }
 
-                EntriesEditor(entries: routine.entries, mode: .routine)
+                EntriesEditor(entries: routine.entries, mode: .routine, historyFor: $historyFor)
 
                 Section {
                     Button {
@@ -224,6 +225,9 @@ struct RoutineEditorView: View {
             }
             .sheet(isPresented: $showReorder) {
                 ReorderView(entries: routine.entries)
+            }
+            .sheet(item: $historyFor) { item in
+                ExerciseHistoryView(exerciseID: item.id)
             }
         } else {
             ContentUnavailableView("Routine not found", systemImage: "questionmark.folder")

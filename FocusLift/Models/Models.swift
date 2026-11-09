@@ -66,31 +66,51 @@ struct Database: Codable {
 
 // MARK: - Records
 
+/// Best values over some sets. Same record types as Hevy.
 struct Bests {
     var weight = 0.0
     var reps = 0
+    var oneRM = 0.0
+    var oneRMSet: WorkSet?
     var volume = 0.0
     var volumeSet: WorkSet?
+    /// Most kg × reps added up over one workout.
+    var sessionVolume = 0.0
 
-    mutating func add(_ set: WorkSet) {
-        weight = max(weight, set.weight)
-        reps = max(reps, set.reps)
-        let setVolume = set.weight * Double(set.reps)
-        if setVolume > volume {
-            volume = setVolume
-            volumeSet = set
+    /// Estimated one-rep max (Epley): the most you could lift once, judging by this set.
+    static func oneRM(_ set: WorkSet) -> Double {
+        set.reps == 1 ? set.weight : set.weight * (1 + Double(set.reps) / 30)
+    }
+
+    /// Adds the sets of one workout.
+    mutating func add(session sets: [WorkSet]) {
+        sessionVolume = max(sessionVolume, sets.reduce(0) { $0 + $1.weight * Double($1.reps) })
+        for set in sets {
+            weight = max(weight, set.weight)
+            reps = max(reps, set.reps)
+            if Bests.oneRM(set) > oneRM {
+                oneRM = Bests.oneRM(set)
+                oneRMSet = set
+            }
+            let setVolume = set.weight * Double(set.reps)
+            if setVolume > volume {
+                volume = setVolume
+                volumeSet = set
+            }
         }
     }
 }
 
 enum RecordKind {
-    case weight, reps, volume
+    case weight, oneRM, volume, sessionVolume, reps
 
     var title: String {
         switch self {
         case .weight: "Heaviest weight"
-        case .reps: "Most reps at this weight"
+        case .oneRM: "Best 1-rep max (estimated)"
         case .volume: "Best set (kg × reps)"
+        case .sessionVolume: "Best workout (kg × reps, all sets)"
+        case .reps: "Most reps"
         }
     }
 }

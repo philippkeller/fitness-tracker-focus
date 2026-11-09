@@ -10,6 +10,7 @@ struct ActiveWorkoutView: View {
     @State private var showReorder = false
     @State private var confirmFinish = false
     @State private var confirmDiscard = false
+    @State private var historyFor: HistorySheetItem?
 
     var body: some View {
         NavigationStack {
@@ -22,7 +23,9 @@ struct ActiveWorkoutView: View {
                             Section { MusicBar() }
                         }
 
-                        EntriesEditor(entries: workout.entries, mode: .workout, previousBefore: workout.wrappedValue.startedAt)
+                        EntriesEditor(
+                            entries: workout.entries, mode: .workout, previousBefore: workout.wrappedValue.startedAt,
+                            historyFor: $historyFor)
 
                         Section {
                             Button {
@@ -52,6 +55,9 @@ struct ActiveWorkoutView: View {
                     }
                     .sheet(isPresented: $showReorder) {
                         ReorderView(entries: workout.entries)
+                    }
+                    .sheet(item: $historyFor) { item in
+                        ExerciseHistoryView(exerciseID: item.id)
                     }
                 } else {
                     ContentUnavailableView("No active workout", systemImage: "figure.strengthtraining.traditional")

@@ -14,6 +14,8 @@ struct EntriesEditor: View {
     let mode: EditorMode
     /// "Previous" shows the last workout before this date.
     var previousBefore: Date = .distantFuture
+    /// Set to show an exercise's history. The sheet lives outside the List (see `HistorySheetItem`).
+    @Binding var historyFor: HistorySheetItem?
 
     var body: some View {
         ForEach($entries) { $entry in
@@ -22,12 +24,19 @@ struct EntriesEditor: View {
                 mode: mode,
                 previous: store.previousSets(for: entry.exerciseID, before: previousBefore),
                 currentSetID: mode == .workout ? engine.currentSetID : nil,
+                onHistory: { historyFor = HistorySheetItem(id: entry.exerciseID) },
                 onRemove: {
                     let id = entry.id
                     withAnimation { entries.removeAll { $0.id == id } }
                 })
         }
     }
+}
+
+/// Which exercise's history to show. The parent attaches the sheet to its List: a sheet on a
+/// section inside the List closed again right after opening.
+struct HistorySheetItem: Identifiable {
+    let id: UUID
 }
 
 private struct EntrySection: View {
@@ -37,9 +46,8 @@ private struct EntrySection: View {
     let mode: EditorMode
     let previous: [WorkSet]
     let currentSetID: UUID?
+    let onHistory: () -> Void
     let onRemove: () -> Void
-
-    @State private var showHistory = false
 
     var body: some View {
         Section {
@@ -78,9 +86,7 @@ private struct EntrySection: View {
                     .strikethrough(entry.skipped)
                 Spacer()
                 Menu {
-                    Button {
-                        showHistory = true
-                    } label: {
+                    Button(action: onHistory) {
                         Label("History", systemImage: "clock.arrow.circlepath")
                     }
                     Menu("Rest for all sets") {
@@ -99,9 +105,6 @@ private struct EntrySection: View {
                 }
             }
             .textCase(nil)
-        }
-        .sheet(isPresented: $showHistory) {
-            ExerciseHistoryView(exerciseID: entry.exerciseID)
         }
     }
 
