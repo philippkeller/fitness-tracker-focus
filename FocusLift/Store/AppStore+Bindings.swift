@@ -33,4 +33,10 @@ extension AppStore {
                 }
             })
     }
+
+    func renameExercise(_ exerciseID: UUID, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let index = exercises.firstIndex(where: { $0.id == exerciseID }) else { return }
+        exercises[index].name = trimmed
+    }
 }

@@ -48,6 +48,8 @@ private struct EntrySection: View {
     let currentSetID: UUID?
     let onHistory: () -> Void
     let onRemove: () -> Void
+    @State private var renaming = false
+    @State private var newName = ""
 
     var body: some View {
         Section {
@@ -89,6 +91,12 @@ private struct EntrySection: View {
                     Button(action: onHistory) {
                         Label("History", systemImage: "clock.arrow.circlepath")
                     }
+                    Button {
+                        newName = store.exerciseName(entry.exerciseID)
+                        renaming = true
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
                     Menu("Rest for all sets") {
                         ForEach(Fmt.restOptions, id: \.self) { seconds in
                             Button(Fmt.rest(seconds)) {
@@ -105,6 +113,11 @@ private struct EntrySection: View {
                 }
             }
             .textCase(nil)
+            .alert("Rename exercise", isPresented: $renaming) {
+                TextField("Name", text: $newName)
+                Button("Cancel", role: .cancel) {}
+                Button("Save") { store.renameExercise(entry.exerciseID, to: newName) }
+            }
         }
     }
 
