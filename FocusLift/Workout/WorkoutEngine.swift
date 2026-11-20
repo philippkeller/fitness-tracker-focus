@@ -31,6 +31,9 @@ final class WorkoutEngine {
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var warnedTenSeconds = false
     @ObservationIgnored private var lastCompleted: SetPosition?
+    /// Hang exercises: when the current set started and how many 10-second calls were made.
+    @ObservationIgnored private var hangStart: Date?
+    @ObservationIgnored private var hangCalls = 0
 
     init(store: AppStore, music: MusicPlayer, blocker: AppBlocker, audio: AudioController, speaker: Speaker) {
         self.store = store
@@ -190,6 +193,7 @@ final class WorkoutEngine {
         workout.entries[position.entry].sets[position.set].done = true
         workout.entries[position.entry].sets[position.set].completedAt = Date()
         store.activeWorkout = workout
+        hangStart = nil
         lastCompleted = position
         let rest = workout.entries[position.entry].sets[position.set].rest
 
@@ -319,6 +323,7 @@ final class WorkoutEngine {
 
     private func tick() {
         now = Date()
+        countHang()
         guard case .resting(let until, _) = phase else { return }
         let remaining = until.timeIntervalSince(now)
         if remaining <= 0 {
@@ -326,6 +331,25 @@ final class WorkoutEngine {
         } else if remaining <= 10.5 && !warnedTenSeconds {
             warnedTenSeconds = true
             say([phrases.tenSeconds])
+        }
+    }
+
+    /// Hang exercises ("Dead Hang", "Hängen"): says every 10 seconds how long you've been hanging,
+    /// counted from the go of the set.
+    private func countHang() {
+        guard phase == .lifting, let info = currentInfo, Phrases.isHang(info.exercise) else {
+            hangStart = nil
+            return
+        }
+        guard let start = hangStart else {
+            hangStart = now
+            hangCalls = 0
+            return
+        }
+        let calls = Int(now.timeIntervalSince(start)) / 10
+        if calls > hangCalls {
+            hangCalls = calls
+            say([phrases.hanging(calls * 10)])
         }
     }
 

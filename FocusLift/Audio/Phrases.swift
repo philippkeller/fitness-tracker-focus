@@ -77,6 +77,16 @@ struct Phrases {
         german ? "Pause, \(duration(seconds))." : "Rest, \(duration(seconds))."
     }
 
+    /// "Zwanzig Sekunden." while hanging.
+    func hanging(_ seconds: Int) -> String {
+        capitalized(duration(seconds)) + "."
+    }
+
+    static func isHang(_ exerciseName: String) -> Bool {
+        let name = exerciseName.lowercased()
+        return name.contains("hang") || name.contains("häng")
+    }
+
     func remaining(_ seconds: Int) -> String {
         german ? "Noch \(duration(seconds)) Pause." : "\(duration(seconds)) of rest left."
     }
@@ -102,6 +112,9 @@ struct Phrases {
             let exercise = store.exercise(entry.exerciseID)
             result.append(sentence(exercise?.name ?? "Exercise"))
             result += note(exercise?.note ?? "")
+            if Self.isHang(exercise?.name ?? "") {
+                result += stride(from: 10, through: 180, by: 10).map(hanging)
+            }
             for (index, set) in entry.sets.enumerated() {
                 if !(set.weight == 0 && set.reps == 0 && entry.sets.count == 1) {
                     result.append(setNumber(index + 1, of: entry.sets.count))
